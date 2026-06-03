@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Starva
 
-## Getting Started
+A full-stack training analytics dashboard built on Strava activity data. The
+charts and KPIs are built as a small, **typed, reusable dashboard component kit**
+— presentational components driven entirely by props, with the charting library
+wrapped behind our own API so it stays swappable.
 
-First, run the development server:
+It runs out of the box on a built-in sample dataset, so you can clone and start
+it with **zero configuration** — no database or API keys required.
+
+## Stack
+
+- **Next.js** (App Router) + **React** + **TypeScript**
+- **Apollo Server** mounted as a Next.js route handler (`/api/graphql`)
+- **Apollo Client** for data fetching on the client
+- **MongoDB** via **Mongoose** (optional — falls back to sample data)
+- **Recharts** for the charting layer
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). With no environment
+configured, the dashboard renders the bundled sample dataset.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To use real data, copy the env template and fill it in:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.local.example .env.local
+```
 
-## Learn More
+| Variable        | Purpose                                                        |
+| --------------- | -------------------------------------------------------------- |
+| `MONGODB_URI`   | MongoDB connection string. Omit to use the sample dataset.     |
+| `STRAVA_*`      | Strava API credentials, used to sync real activities (planned).|
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/
+    api/graphql/route.ts   Apollo Server exposed as a Next.js route handler
+    ApolloWrapper.tsx      Client-side ApolloProvider
+    page.tsx               Dashboard (loading / empty / error states)
+  graphql/                 GraphQL type defs + resolvers
+  lib/                     Mongoose models, data access, sample data, formatters
+  components/dashboard/    Reusable, presentational KPI + chart components
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Data access is centralized in `src/lib/activities.ts`: it reads from MongoDB when
+`MONGODB_URI` is set and otherwise returns the deterministic sample dataset, so
+the GraphQL layer is identical in both modes.
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev     # start the dev server
+npm run build   # production build
+npm run lint    # eslint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Roadmap
+
+- Strava OAuth + background sync into MongoDB Atlas
+- Storybook stories + Chromatic visual regression in CI
+- More visualizations (activity-type breakdown, calendar heatmap, distance histogram)
+- Unit tests for the data/aggregation layer

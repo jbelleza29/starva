@@ -35,6 +35,8 @@ const meta = {
   args: {
     data: weeklyKm,
     unit: " km",
+    // Disable animation so Chromatic captures a deterministic frame.
+    animate: false,
   },
 } satisfies Meta<typeof TrendChart>;
 

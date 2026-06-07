@@ -21,6 +21,8 @@ export interface TrendChartProps {
   unit?: string;
   /** Accent color. */
   color?: string;
+  /** Set to false to disable the mount animation — used for deterministic visual snapshots. */
+  animate?: boolean;
 }
 
 /**
@@ -28,7 +30,12 @@ export interface TrendChartProps {
  * charting engine stays swappable (Recharts now, Visx later) without touching
  * call sites. Part of the dashboard component kit.
  */
-export function TrendChart({ data, unit = "", color = "#f97316" }: TrendChartProps) {
+export function TrendChart({
+  data,
+  unit = "",
+  color = "#f97316",
+  animate = true,
+}: TrendChartProps) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -49,6 +56,7 @@ export function TrendChart({ data, unit = "", color = "#f97316" }: TrendChartPro
             stroke={color}
             strokeWidth={2}
             fill="url(#trendFill)"
+            isAnimationActive={animate}
           />
         </AreaChart>
       </ResponsiveContainer>

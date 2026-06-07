@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "chromatic": "chromatic"
   },
   "dependencies": {
     "@apollo/client": "^4.2.1",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19",
     "@vitest/browser-playwright": "^4.1.8",
     "@vitest/coverage-v8": "^4.1.8",
+    "chromatic": "^16.10.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "eslint-plugin-storybook": "^10.4.2",

@@ -46,7 +46,7 @@ AGENTS.md
 CLAUDE.md
 HANDOFF.md
 WALKTHROUGH.md
-.claude/
+.claude/*
 
 *storybook.log
 storybook-static

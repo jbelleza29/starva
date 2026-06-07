@@ -47,3 +47,6 @@ CLAUDE.md
 HANDOFF.md
 WALKTHROUGH.md
 .claude/
+
+*storybook.log
+storybook-static

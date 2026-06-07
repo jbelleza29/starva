@@ -9,7 +9,8 @@
     "lint": "eslint",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "chromatic": "chromatic"
+    "chromatic": "chromatic",
+    "seed": "tsx src/scripts/seed.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.2.1",
@@ -41,6 +42,7 @@
     "playwright": "^1.60.0",
     "storybook": "^10.4.2",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vite": "^8.0.16",
     "vitest": "^4.1.8"

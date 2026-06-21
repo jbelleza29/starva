@@ -10,7 +10,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "chromatic": "chromatic",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "test": "vitest run --project unit"
   },
   "dependencies": {
     "@apollo/client": "^4.2.1",

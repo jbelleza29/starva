@@ -8,18 +8,16 @@ export default function About() {
         <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
           <h2 className="mb-3 text-base font-semibold">The project</h2>
           <p className="text-sm leading-7 text-neutral-600 dark:text-neutral-400">
-            Starva is a full-stack personal training analytics dashboard built on real Strava
-            activity data. It started as a portfolio piece to publicly prove skills in
-            Next.js, GraphQL, MongoDB, and Storybook/Chromatic — the stack I use day-to-day.
-            The design goal was a reusable, typed dashboard component kit: presentational
-            components driven entirely by props, with charting wrapped behind a stable API
-            so the engine stays swappable.
+            Starva is a personal training analytics dashboard built on my real Strava data.
+            I built it to fill in the gaps in my public portfolio — Next.js App Router,
+            GraphQL, MongoDB, and a proper CI pipeline. The data is live: activities sync
+            from Strava via OAuth, land in MongoDB Atlas, and get served through an Apollo
+            GraphQL API that runs as a Next.js route handler.
           </p>
           <p className="mt-3 text-sm leading-7 text-neutral-600 dark:text-neutral-400">
-            The data is real — activities are synced from Strava via OAuth, stored in
-            MongoDB Atlas, and served through an Apollo GraphQL API mounted as a Next.js
-            route handler. Every push triggers a CI pipeline that runs lint, typecheck,
-            build, and Chromatic visual regression tests.
+            The components are built as a reusable kit — purely prop-driven, with the
+            charting library wrapped behind a stable API so it stays swappable. Every push
+            runs lint, typecheck, build, and Chromatic visual regression in CI.
           </p>
         </section>
 
@@ -49,18 +47,17 @@ export default function About() {
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-          <h2 className="mb-3 text-base font-semibold">The developer</h2>
+          <h2 className="mb-3 text-base font-semibold">Who I am</h2>
           <p className="text-sm leading-7 text-neutral-600 dark:text-neutral-400">
-            Senior front-end engineer with 5+ years of production experience. I champion
-            developer experience: I introduced Storybook and integrated Chromatic visual
-            regression testing at Huckberry, co-led a design-system rebrand synced from
-            Figma tokens, and have been the primary author and reviewer of component work
-            across the stack.
+            I&apos;m a front-end engineer based in Pickering, Ontario with 5+ years building
+            production web apps. Most of that time has been at Huckberry, where I introduced
+            Storybook, set up Chromatic visual regression, co-led a design-system rebrand
+            tied to Figma tokens, and have been the main reviewer of component work across
+            the front end.
           </p>
           <p className="mt-3 text-sm leading-7 text-neutral-600 dark:text-neutral-400">
-            Starva is where I pushed into the full-stack gaps — Next.js backend patterns,
-            GraphQL API design, MongoDB data modelling, and OAuth token lifecycle — to
-            round out the picture.
+            Starva is my way of proving out the back-end and infrastructure side of things
+            in public — something a UI-focused role doesn&apos;t always give you room to do.
           </p>
           <div className="mt-4 flex gap-3">
             <a

@@ -1,9 +1,6 @@
 # Architecture Decision Record — Starva
 
-Short notes on the non-obvious choices in this project and why I made them.
-Each entry follows the same shape: what I chose, what I considered instead, and why.
-
----
+Notes on the non-obvious choices in this project and why I made them.
 
 ## 1. GraphQL + Apollo Server mounted as a Next.js route handler
 
@@ -29,8 +26,6 @@ tRPC was tempting for the type safety, but Apollo + codegen gives the same
 guarantee and keeps the API independently queryable (useful for adding a
 mobile client or exposing data to other tools later).
 
----
-
 ## 2. MongoDB over a relational database
 
 **Chosen:** MongoDB Atlas (free M0 tier) via Mongoose.
@@ -51,8 +46,6 @@ an honest claim.
 
 The tradeoff I accepted: no joins, no transactions across collections. For
 a read-heavy analytics dashboard with one collection, that's a fine tradeoff.
-
----
 
 ## 3. Sample-data fallback when no database is configured
 
@@ -76,8 +69,6 @@ evaluate.
 The fallback also makes the test suite straightforward: no database mocking
 needed since tests automatically use sample data when `MONGODB_URI` is absent.
 
----
-
 ## 4. Recharts wrapped behind a custom component API
 
 **Chosen:** `TrendChart` and `DonutChart` expose their own prop interfaces
@@ -97,8 +88,6 @@ It also makes the components trivial to document in Storybook: a story is
 just `<TrendChart data={[...]} unit=" km" />` with no knowledge of Recharts
 internals. That's the design that makes visual regression testing with
 Chromatic actually useful — pure, prop-driven components with no side effects.
-
----
 
 ## 5. Storybook + Chromatic on a solo personal project
 
@@ -122,8 +111,6 @@ The practical benefit even for a solo project: the 20 Storybook stories
 give a component playground that's faster to iterate in than the full app,
 and Chromatic catches unintended visual regressions when I refactor shared
 components like `KpiCard`.
-
----
 
 ## 6. Strava OAuth tokens stored server-side in MongoDB
 

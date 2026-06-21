@@ -7,6 +7,7 @@ import {
   getDailyHeatmap,
   getHighlights,
 } from "@/lib/activities";
+import { getGoals, createGoal, deleteGoal } from "@/lib/goals";
 import { connectToDatabase } from "@/lib/db";
 import { StravaAccount } from "@/lib/models/StravaAccount";
 
@@ -28,5 +29,13 @@ export const resolvers = {
     dailyHeatmap: (_parent: unknown, args: { days?: number }) =>
       getDailyHeatmap(args.days ?? 365),
     highlights: () => getHighlights(),
+    goals: () => getGoals(),
+  },
+  Mutation: {
+    createGoal: (
+      _parent: unknown,
+      args: { activityType: string; metric: string; target: number; month: string },
+    ) => createGoal(args.activityType, args.metric, args.target, args.month),
+    deleteGoal: (_parent: unknown, args: { id: string }) => deleteGoal(args.id),
   },
 };

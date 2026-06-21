@@ -49,6 +49,21 @@ export const typeDefs = `#graphql
     avgWeekDistance: Float!
   }
 
+  type Goal {
+    id: ID!
+    activityType: String!
+    metric: String!
+    target: Float!
+    month: String!
+    progress: Float!
+    createdAt: String!
+  }
+
+  type Mutation {
+    createGoal(activityType: String!, metric: String!, target: Float!, month: String!): Goal!
+    deleteGoal(id: ID!): Boolean!
+  }
+
   type Query {
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
@@ -58,5 +73,6 @@ export const typeDefs = `#graphql
     activityTypeBreakdown: [ActivityTypeBreakdown!]!
     dailyHeatmap(days: Int): [DailyActivity!]!
     highlights: DashboardHighlights!
+    goals: [Goal!]!
   }
 `;

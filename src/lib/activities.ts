@@ -193,6 +193,37 @@ export async function getActivityTypes(): Promise<string[]> {
   return breakdown.map((b) => b.type);
 }
 
+export interface ActivityPeak {
+  type: string;
+  name: string;
+  distance: number;
+  movingTime: number;
+}
+
+/** Returns the longest activity (by distance, falling back to time) for each type. */
+export async function getLongestPerType(): Promise<ActivityPeak[]> {
+  const activities = await getActivities();
+  const byType = new Map<string, ActivityRecord>();
+
+  for (const a of activities) {
+    const current = byType.get(a.type);
+    if (
+      !current ||
+      a.distance > current.distance ||
+      (a.distance === current.distance && a.movingTime > current.movingTime)
+    ) {
+      byType.set(a.type, a);
+    }
+  }
+
+  return Array.from(byType.values()).map((a) => ({
+    type: a.type,
+    name: a.name,
+    distance: a.distance,
+    movingTime: a.movingTime,
+  }));
+}
+
 export interface DailyActivity {
   date: string;    // YYYY-MM-DD
   movingTime: number; // seconds

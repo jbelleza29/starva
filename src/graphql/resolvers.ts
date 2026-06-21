@@ -6,6 +6,7 @@ import {
   getActivityTypes,
   getDailyHeatmap,
   getHighlights,
+  getLongestPerType,
 } from "@/lib/activities";
 import { getGoals, createGoal, deleteGoal } from "@/lib/goals";
 import { connectToDatabase } from "@/lib/db";
@@ -29,6 +30,7 @@ export const resolvers = {
     dailyHeatmap: (_parent: unknown, args: { days?: number }) =>
       getDailyHeatmap(args.days ?? 365),
     highlights: () => getHighlights(),
+    longestPerType: () => getLongestPerType(),
     goals: () => getGoals(),
   },
   Mutation: {

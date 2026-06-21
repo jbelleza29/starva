@@ -34,6 +34,13 @@ export const typeDefs = `#graphql
     movingTime: Int!
   }
 
+  type ActivityPeak {
+    type: String!
+    name: String!
+    distance: Float!
+    movingTime: Int!
+  }
+
   type DailyActivity {
     date: String!
     movingTime: Int!
@@ -73,6 +80,7 @@ export const typeDefs = `#graphql
     activityTypeBreakdown: [ActivityTypeBreakdown!]!
     dailyHeatmap(days: Int): [DailyActivity!]!
     highlights: DashboardHighlights!
+    longestPerType: [ActivityPeak!]!
     goals: [Goal!]!
   }
 `;

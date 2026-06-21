@@ -127,15 +127,6 @@ function PageContent() {
         </div>
       </header>
 
-      {data?.activityTypes && data.activityTypes.length > 0 ? (
-        <div className="mb-6">
-          <ActivityFilter
-            types={data.activityTypes}
-            value={selectedType}
-            onChange={setSelectedType}
-          />
-        </div>
-      ) : null}
 
       {stravaStatus === "connected" ? (
         <Banner variant="success">Connected to Strava — click Sync to load your activities.</Banner>
@@ -151,7 +142,13 @@ function PageContent() {
         <Banner variant="error">Couldn&apos;t load your training data: {error.message}</Banner>
       ) : null}
 
-      {data ? <Dashboard data={data} selectedType={selectedType} /> : null}
+      {data ? (
+        <Dashboard
+          data={data}
+          selectedType={selectedType}
+          onTypeChange={setSelectedType}
+        />
+      ) : null}
     </main>
   );
 }
@@ -159,9 +156,11 @@ function PageContent() {
 function Dashboard({
   data,
   selectedType,
+  onTypeChange,
 }: {
   data: DashboardData;
   selectedType: string | null;
+  onTypeChange: (type: string | null) => void;
 }) {
   const { summary, weeklyTrainingLoad, activityTypeBreakdown } = data;
 
@@ -196,7 +195,14 @@ function Dashboard({
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
-          <h2 className="mb-4 text-sm font-medium text-neutral-500">{trendLabel}</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-500">{trendLabel}</h2>
+            <ActivityFilter
+              types={data.activityTypes}
+              value={selectedType}
+              onChange={onTypeChange}
+            />
+          </div>
           <TrendChart data={trend} unit=" km" />
         </section>
       </div>

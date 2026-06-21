@@ -39,6 +39,15 @@ const DASHBOARD_QUERY = gql`
       date
       movingTime
     }
+    highlights {
+      bestWeekDistance
+      bestWeekStart
+      longestActivityDistance
+      longestActivityName
+      longestActivityType
+      currentWeekDistance
+      avgWeekDistance
+    }
   }
 `;
 
@@ -63,6 +72,15 @@ interface DashboardData {
     totalElevationGain: number;
   };
   dailyHeatmap: HeatmapDay[];
+  highlights: {
+    bestWeekDistance: number;
+    bestWeekStart: string;
+    longestActivityDistance: number;
+    longestActivityName: string;
+    longestActivityType: string;
+    currentWeekDistance: number;
+    avgWeekDistance: number;
+  };
 }
 
 export default function Home() {
@@ -156,7 +174,7 @@ function PageContent() {
 }
 
 function Dashboard({ data }: { data: DashboardData }) {
-  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap } = data;
+  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights } = data;
 
   if (summary.activityCount === 0) {
     return (
@@ -173,6 +191,32 @@ function Dashboard({ data }: { data: DashboardData }) {
         <KpiCard label="Moving time" value={formatDuration(summary.totalMovingTime)} />
         <KpiCard label="Activities" value={String(summary.activityCount)} />
         <KpiCard label="Elevation gain" value={formatElevation(summary.totalElevationGain)} />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard
+          label="Best week"
+          value={formatDistance(highlights.bestWeekDistance)}
+          sublabel={highlights.bestWeekStart ? `w/o ${formatWeekLabel(highlights.bestWeekStart)}` : undefined}
+        />
+        <KpiCard
+          label="Longest activity"
+          value={formatDistance(highlights.longestActivityDistance)}
+          sublabel={highlights.longestActivityName}
+        />
+        <KpiCard
+          label="This week"
+          value={formatDistance(highlights.currentWeekDistance)}
+          sublabel={
+            highlights.avgWeekDistance > 0
+              ? (() => {
+                  const diff = highlights.currentWeekDistance - highlights.avgWeekDistance;
+                  const pct = Math.round((diff / highlights.avgWeekDistance) * 100);
+                  return `${pct >= 0 ? "+" : ""}${pct}% vs avg week`;
+                })()
+              : undefined
+          }
+        />
       </section>
 
       <div className="grid gap-6 md:grid-cols-3">

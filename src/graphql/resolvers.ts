@@ -4,6 +4,7 @@ import {
   getSummary,
   getActivityTypeBreakdown,
   getActivityTypes,
+  getDailyHeatmap,
 } from "@/lib/activities";
 import { connectToDatabase } from "@/lib/db";
 import { StravaAccount } from "@/lib/models/StravaAccount";
@@ -23,5 +24,7 @@ export const resolvers = {
     },
     activityTypes: () => getActivityTypes(),
     activityTypeBreakdown: () => getActivityTypeBreakdown(),
+    dailyHeatmap: (_parent: unknown, args: { days?: number }) =>
+      getDailyHeatmap(args.days ?? 365),
   },
 };

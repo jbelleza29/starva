@@ -34,6 +34,11 @@ export const typeDefs = `#graphql
     movingTime: Int!
   }
 
+  type DailyActivity {
+    date: String!
+    movingTime: Int!
+  }
+
   type Query {
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
@@ -41,5 +46,6 @@ export const typeDefs = `#graphql
     stravaConnected: Boolean!
     activityTypes: [String!]!
     activityTypeBreakdown: [ActivityTypeBreakdown!]!
+    dailyHeatmap(days: Int): [DailyActivity!]!
   }
 `;

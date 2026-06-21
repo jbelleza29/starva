@@ -135,3 +135,47 @@ export async function getActivityTypes(): Promise<string[]> {
   const breakdown = await getActivityTypeBreakdown();
   return breakdown.map((b) => b.type);
 }
+
+export interface DailyActivity {
+  date: string;    // YYYY-MM-DD
+  movingTime: number; // seconds
+}
+
+/**
+ * Returns total moving time per day for the last N days.
+ * Queries MongoDB directly with a date filter — does not load all activities.
+ */
+export async function getDailyHeatmap(days = 365): Promise<DailyActivity[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  since.setUTCHours(0, 0, 0, 0);
+
+  const conn = await connectToDatabase();
+
+  if (conn) {
+    const docs = await Activity.find({ startDate: { $gte: since } })
+      .select("startDate movingTime")
+      .lean();
+
+    const byDay = new Map<string, number>();
+    for (const d of docs) {
+      const key = new Date(d.startDate).toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) ?? 0) + d.movingTime);
+    }
+    return Array.from(byDay.entries())
+      .map(([date, movingTime]) => ({ date, movingTime }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  // Sample data fallback
+  const cutoffMs = since.getTime();
+  const byDay = new Map<string, number>();
+  for (const a of getSampleActivities()) {
+    if (new Date(a.startDate).getTime() < cutoffMs) continue;
+    const key = a.startDate.slice(0, 10);
+    byDay.set(key, (byDay.get(key) ?? 0) + a.movingTime);
+  }
+  return Array.from(byDay.entries())
+    .map(([date, movingTime]) => ({ date, movingTime }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}

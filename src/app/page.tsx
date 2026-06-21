@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useApolloClient, useQuery } from "@apollo/client/react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
 import { ActivityFilter } from "@/components/dashboard/ActivityFilter";
@@ -16,8 +16,9 @@ import {
   formatWeekLabel,
 } from "@/lib/format";
 
+// Static query — no filter variables. Drives everything except the trend chart.
 const DASHBOARD_QUERY = gql`
-  query Dashboard($type: String) {
+  query Dashboard {
     stravaConnected
     activityTypes
     activityTypeBreakdown {
@@ -32,6 +33,12 @@ const DASHBOARD_QUERY = gql`
       activityCount
       totalElevationGain
     }
+  }
+`;
+
+// Isolated query owned by TrendSection — re-runs only when the filter changes.
+const TREND_QUERY = gql`
+  query TrendLoad($type: String) {
     weeklyTrainingLoad(weeks: 12, type: $type) {
       weekStart
       distance
@@ -49,10 +56,6 @@ interface DashboardData {
     activityCount: number;
     totalElevationGain: number;
   };
-  weeklyTrainingLoad: {
-    weekStart: string;
-    distance: number;
-  }[];
 }
 
 export default function Home() {
@@ -67,13 +70,11 @@ function PageContent() {
   const searchParams = useSearchParams();
   const stravaStatus = searchParams.get("strava") as "connected" | "denied" | "error" | null;
 
-  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
-  const { data, loading, error, refetch } = useQuery<DashboardData>(DASHBOARD_QUERY, {
-    variables: { type: selectedType },
-  });
+  const client = useApolloClient();
+  const { data, loading, error } = useQuery<DashboardData>(DASHBOARD_QUERY);
 
   async function handleSync() {
     setSyncing(true);
@@ -83,7 +84,8 @@ function PageContent() {
       const json = await res.json();
       if (json.ok) {
         setSyncMsg(`Synced ${json.synced} activities.`);
-        refetch();
+        // Refetch all active queries — both Dashboard and TrendLoad.
+        await client.refetchQueries({ include: "active" });
       } else {
         setSyncMsg(`Sync failed: ${json.error}`);
       }
@@ -127,7 +129,6 @@ function PageContent() {
         </div>
       </header>
 
-
       {stravaStatus === "connected" ? (
         <Banner variant="success">Connected to Strava — click Sync to load your activities.</Banner>
       ) : stravaStatus === "denied" ? (
@@ -142,27 +143,13 @@ function PageContent() {
         <Banner variant="error">Couldn&apos;t load your training data: {error.message}</Banner>
       ) : null}
 
-      {data ? (
-        <Dashboard
-          data={data}
-          selectedType={selectedType}
-          onTypeChange={setSelectedType}
-        />
-      ) : null}
+      {data ? <Dashboard data={data} /> : null}
     </main>
   );
 }
 
-function Dashboard({
-  data,
-  selectedType,
-  onTypeChange,
-}: {
-  data: DashboardData;
-  selectedType: string | null;
-  onTypeChange: (type: string | null) => void;
-}) {
-  const { summary, weeklyTrainingLoad, activityTypeBreakdown } = data;
+function Dashboard({ data }: { data: DashboardData }) {
+  const { summary, activityTypeBreakdown, activityTypes } = data;
 
   if (summary.activityCount === 0) {
     return (
@@ -171,13 +158,6 @@ function Dashboard({
       </p>
     );
   }
-
-  const trend = weeklyTrainingLoad.map((week) => ({
-    label: formatWeekLabel(week.weekStart),
-    value: Math.round(week.distance / 100) / 10,
-  }));
-
-  const trendLabel = selectedType ? `Weekly distance · ${selectedType}` : "Weekly distance";
 
   return (
     <div className="flex flex-col gap-6">
@@ -194,19 +174,39 @@ function Dashboard({
           <DonutChart data={activityTypeBreakdown} />
         </section>
 
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-500">{trendLabel}</h2>
-            <ActivityFilter
-              types={data.activityTypes}
-              value={selectedType}
-              onChange={onTypeChange}
-            />
-          </div>
-          <TrendChart data={trend} unit=" km" />
-        </section>
+        {/* TrendSection owns its own state + query — changing the filter only re-renders this panel. */}
+        <TrendSection types={activityTypes} />
       </div>
     </div>
+  );
+}
+
+// Isolated component: owns selectedType state and the TREND_QUERY.
+// Nothing outside this subtree re-renders when the filter changes.
+function TrendSection({ types }: { types: string[] }) {
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  const { data } = useQuery<{
+    weeklyTrainingLoad: { weekStart: string; distance: number }[];
+  }>(TREND_QUERY, {
+    variables: { type: selectedType },
+  });
+
+  const trend = (data?.weeklyTrainingLoad ?? []).map((week) => ({
+    label: formatWeekLabel(week.weekStart),
+    value: Math.round(week.distance / 100) / 10,
+  }));
+
+  const label = selectedType ? `Weekly distance · ${selectedType}` : "Weekly distance";
+
+  return (
+    <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium text-neutral-500">{label}</h2>
+        <ActivityFilter types={types} value={selectedType} onChange={setSelectedType} />
+      </div>
+      <TrendChart data={trend} unit=" km" />
+    </section>
   );
 }
 

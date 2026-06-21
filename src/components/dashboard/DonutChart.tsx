@@ -36,13 +36,15 @@ export interface DonutChartDataItem {
 
 export interface DonutChartProps {
   data: DonutChartDataItem[];
+  /** Set to false to disable mount animation — used for deterministic Chromatic snapshots. */
+  animate?: boolean;
 }
 
 /**
- * Donut chart showing the breakdown of activities by type (distance-weighted).
+ * Donut chart showing the breakdown of activities by type (moving-time weighted).
  * Part of the reusable dashboard component kit.
  */
-export function DonutChart({ data }: DonutChartProps) {
+export function DonutChart({ data, animate = true }: DonutChartProps) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -55,6 +57,7 @@ export function DonutChart({ data }: DonutChartProps) {
             outerRadius="72%"
             paddingAngle={2}
             strokeWidth={0}
+            isAnimationActive={animate}
           >
             {data.map((entry, index) => (
               <Cell key={entry.type} fill={typeColor(entry.type, index)} />

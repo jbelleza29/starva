@@ -39,6 +39,16 @@ export const typeDefs = `#graphql
     movingTime: Int!
   }
 
+  type DashboardHighlights {
+    bestWeekDistance: Float!
+    bestWeekStart: String!
+    longestActivityDistance: Float!
+    longestActivityName: String!
+    longestActivityType: String!
+    currentWeekDistance: Float!
+    avgWeekDistance: Float!
+  }
+
   type Query {
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
@@ -47,5 +57,6 @@ export const typeDefs = `#graphql
     activityTypes: [String!]!
     activityTypeBreakdown: [ActivityTypeBreakdown!]!
     dailyHeatmap(days: Int): [DailyActivity!]!
+    highlights: DashboardHighlights!
   }
 `;

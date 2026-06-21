@@ -107,6 +107,63 @@ export async function getSummary(): Promise<DashboardSummary> {
   );
 }
 
+export interface DashboardHighlights {
+  bestWeekDistance: number;
+  bestWeekStart: string;
+  longestActivityDistance: number;
+  longestActivityName: string;
+  longestActivityType: string;
+  currentWeekDistance: number;
+  avgWeekDistance: number;
+}
+
+/** Computes highlight stats: best week, longest activity, and this week vs average. */
+export async function getHighlights(): Promise<DashboardHighlights> {
+  const activities = await getActivities();
+
+  if (activities.length === 0) {
+    return {
+      bestWeekDistance: 0, bestWeekStart: "",
+      longestActivityDistance: 0, longestActivityName: "—", longestActivityType: "",
+      currentWeekDistance: 0, avgWeekDistance: 0,
+    };
+  }
+
+  const longest = activities.reduce((max, a) => a.distance > max.distance ? a : max, activities[0]);
+
+  const byWeek = new Map<string, number>();
+  for (const a of activities) {
+    const key = startOfWeek(new Date(a.startDate)).toISOString().slice(0, 10);
+    byWeek.set(key, (byWeek.get(key) ?? 0) + a.distance);
+  }
+
+  let bestWeekKey = "";
+  let bestWeekDist = 0;
+  for (const [key, dist] of byWeek.entries()) {
+    if (dist > bestWeekDist) { bestWeekDist = dist; bestWeekKey = key; }
+  }
+
+  const currentWeekKey = startOfWeek(new Date()).toISOString().slice(0, 10);
+  const currentWeekDist = byWeek.get(currentWeekKey) ?? 0;
+
+  const completedWeekDistances = Array.from(byWeek.entries())
+    .filter(([key]) => key !== currentWeekKey)
+    .map(([, dist]) => dist);
+  const avgWeekDist = completedWeekDistances.length > 0
+    ? completedWeekDistances.reduce((s, d) => s + d, 0) / completedWeekDistances.length
+    : 0;
+
+  return {
+    bestWeekDistance: bestWeekDist,
+    bestWeekStart: bestWeekKey,
+    longestActivityDistance: longest.distance,
+    longestActivityName: longest.name,
+    longestActivityType: longest.type,
+    currentWeekDistance: currentWeekDist,
+    avgWeekDistance: avgWeekDist,
+  };
+}
+
 export interface ActivityTypeBreakdown {
   type: string;
   count: number;

@@ -6,7 +6,7 @@ import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
-import { ActivityFilter } from "@/components/dashboard/ActivityFilter";
+import { ActivityFilter, getActivityIcon } from "@/components/dashboard/ActivityFilter";
 import { DonutChart } from "@/components/dashboard/DonutChart";
 import type { DonutChartDataItem } from "@/components/dashboard/DonutChart";
 import { HeatmapChart } from "@/components/dashboard/HeatmapChart";
@@ -48,6 +48,14 @@ const DASHBOARD_QUERY = gql`
       currentWeekDistance
       avgWeekDistance
     }
+    goals {
+      id
+      activityType
+      metric
+      target
+      month
+      progress
+    }
   }
 `;
 
@@ -72,6 +80,14 @@ interface DashboardData {
     totalElevationGain: number;
   };
   dailyHeatmap: HeatmapDay[];
+  goals: {
+    id: string;
+    activityType: string;
+    metric: string;
+    target: number;
+    month: string;
+    progress: number;
+  }[];
   highlights: {
     bestWeekDistance: number;
     bestWeekStart: string;
@@ -174,7 +190,7 @@ function PageContent() {
 }
 
 function Dashboard({ data }: { data: DashboardData }) {
-  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights } = data;
+  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights, goals } = data;
 
   if (summary.activityCount === 0) {
     return (
@@ -233,6 +249,49 @@ function Dashboard({ data }: { data: DashboardData }) {
         <h2 className="mb-4 text-sm font-medium text-neutral-500">Training consistency</h2>
         <HeatmapChart data={dailyHeatmap} />
       </section>
+
+      {goals.length > 0 && (
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-500">Goals in progress</h2>
+            <a href="/goals" className="text-xs text-orange-500 hover:underline">
+              Manage goals →
+            </a>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {goals.map((goal) => {
+              const pct = Math.min(Math.round((goal.progress / goal.target) * 100), 100);
+              const done = pct >= 100;
+              const valueLabel =
+                goal.metric === "distance"
+                  ? formatDistance(goal.progress)
+                  : formatDuration(goal.progress);
+              const targetLabel =
+                goal.metric === "distance"
+                  ? formatDistance(goal.target)
+                  : formatDuration(goal.target);
+              return (
+                <div key={goal.id} className="rounded-lg border border-black/10 p-4 dark:border-white/10">
+                  <p className="text-xs font-medium">
+                    {getActivityIcon(goal.activityType)}{" "}
+                    {goal.activityType === "All" ? "All activities" : goal.activityType}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    {valueLabel} / {targetLabel}
+                  </p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
+                    <div
+                      className={`h-full rounded-full ${done ? "bg-green-500" : "bg-orange-500"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-right text-xs text-neutral-400">{pct}%</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

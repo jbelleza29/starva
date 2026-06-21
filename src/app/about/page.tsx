@@ -71,6 +71,14 @@ export default function About() {
             >
               GitHub
             </a>
+            <a
+              href="https://www.linkedin.com/in/john-pritz-belleza-a651b6126/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-black/10 px-4 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:border-orange-400 hover:text-orange-500 dark:border-white/10 dark:text-neutral-400"
+            >
+              LinkedIn
+            </a>
           </div>
         </section>
       </div>

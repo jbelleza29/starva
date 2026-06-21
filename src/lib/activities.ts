@@ -16,15 +16,21 @@ export interface ActivityRecord {
   averageHeartrate?: number;
 }
 
+interface ActivityQuery {
+  limit?: number;
+  type?: string;
+}
+
 /** Returns activities from MongoDB if configured, else the sample dataset. */
-export async function getActivities(limit?: number): Promise<ActivityRecord[]> {
+export async function getActivities(query?: ActivityQuery): Promise<ActivityRecord[]> {
+  const { limit, type } = query ?? {};
   const conn = await connectToDatabase();
 
   if (conn) {
-    const docs = await Activity.find()
-      .sort({ startDate: -1 })
-      .limit(limit ?? 200)
-      .lean();
+    const filter = type ? { type } : {};
+    const q = Activity.find(filter).sort({ startDate: -1 });
+    if (limit) q.limit(limit);
+    const docs = await q.lean();
 
     return docs.map((d) => ({
       id: String(d._id),
@@ -41,7 +47,8 @@ export async function getActivities(limit?: number): Promise<ActivityRecord[]> {
     }));
   }
 
-  const sample = getSampleActivities();
+  let sample = getSampleActivities();
+  if (type) sample = sample.filter((a) => a.type === type);
   return limit ? sample.slice(0, limit) : sample;
 }
 
@@ -60,9 +67,9 @@ function startOfWeek(date: Date): Date {
   return d;
 }
 
-/** Aggregates activities into weekly training load (the non-trivial aggregation). */
-export async function getWeeklyTrainingLoad(weeks = 12): Promise<WeeklyLoad[]> {
-  const activities = await getActivities();
+/** Aggregates activities into weekly training load, optionally filtered by type. */
+export async function getWeeklyTrainingLoad(weeks = 12, type?: string): Promise<WeeklyLoad[]> {
+  const activities = await getActivities({ type });
   const byWeek = new Map<string, WeeklyLoad>();
 
   for (const a of activities) {
@@ -98,4 +105,31 @@ export async function getSummary(): Promise<DashboardSummary> {
     }),
     { totalDistance: 0, totalMovingTime: 0, activityCount: 0, totalElevationGain: 0 },
   );
+}
+
+export interface ActivityTypeBreakdown {
+  type: string;
+  count: number;
+  distance: number;
+}
+
+/** Returns distance + count per activity type, sorted by distance descending. */
+export async function getActivityTypeBreakdown(): Promise<ActivityTypeBreakdown[]> {
+  const activities = await getActivities();
+  const byType = new Map<string, ActivityTypeBreakdown>();
+
+  for (const a of activities) {
+    const entry = byType.get(a.type) ?? { type: a.type, count: 0, distance: 0 };
+    entry.count += 1;
+    entry.distance += a.distance;
+    byType.set(a.type, entry);
+  }
+
+  return Array.from(byType.values()).sort((a, b) => b.distance - a.distance);
+}
+
+/** Returns the distinct activity types present in the dataset. */
+export async function getActivityTypes(): Promise<string[]> {
+  const breakdown = await getActivityTypeBreakdown();
+  return breakdown.map((b) => b.type);
 }

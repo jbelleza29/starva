@@ -27,10 +27,18 @@ export const typeDefs = `#graphql
     totalElevationGain: Float!
   }
 
+  type ActivityTypeBreakdown {
+    type: String!
+    count: Int!
+    distance: Float!
+  }
+
   type Query {
     activities(limit: Int): [Activity!]!
-    weeklyTrainingLoad(weeks: Int): [WeeklyLoad!]!
+    weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
     summary: DashboardSummary!
     stravaConnected: Boolean!
+    activityTypes: [String!]!
+    activityTypeBreakdown: [ActivityTypeBreakdown!]!
   }
 `;

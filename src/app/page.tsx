@@ -24,6 +24,7 @@ const DASHBOARD_QUERY = gql`
       type
       count
       distance
+      movingTime
     }
     summary {
       totalDistance

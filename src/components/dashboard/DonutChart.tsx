@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { formatDistance } from "@/lib/format";
+import { formatDuration } from "@/lib/format";
 import { getActivityIcon } from "./ActivityFilter";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -31,6 +31,7 @@ export interface DonutChartDataItem {
   type: string;
   count: number;
   distance: number;
+  movingTime: number;
 }
 
 export interface DonutChartProps {
@@ -48,7 +49,7 @@ export function DonutChart({ data }: DonutChartProps) {
         <PieChart>
           <Pie
             data={data}
-            dataKey="distance"
+            dataKey="movingTime"
             nameKey="type"
             innerRadius="52%"
             outerRadius="72%"
@@ -61,9 +62,10 @@ export function DonutChart({ data }: DonutChartProps) {
           </Pie>
           <Tooltip
             formatter={(value, name) => [
-              formatDistance(Number(value)),
+              formatDuration(Number(value)),
               `${getActivityIcon(String(name))} ${String(name)}`,
             ]}
+            isAnimationActive={false}
           />
           <Legend
             iconType="circle"

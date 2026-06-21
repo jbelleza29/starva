@@ -49,7 +49,7 @@ export function TrendChart({
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={40} />
-          <Tooltip formatter={(value) => `${value}${unit}`} />
+          <Tooltip formatter={(value) => `${value}${unit}`} isAnimationActive={false} />
           <Area
             type="monotone"
             dataKey="value"

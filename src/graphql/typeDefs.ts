@@ -31,6 +31,7 @@ export const typeDefs = `#graphql
     type: String!
     count: Int!
     distance: Float!
+    movingTime: Int!
   }
 
   type Query {

@@ -111,21 +111,23 @@ export interface ActivityTypeBreakdown {
   type: string;
   count: number;
   distance: number;
+  movingTime: number;
 }
 
-/** Returns distance + count per activity type, sorted by distance descending. */
+/** Returns distance, moving time, and count per activity type, sorted by moving time descending. */
 export async function getActivityTypeBreakdown(): Promise<ActivityTypeBreakdown[]> {
   const activities = await getActivities();
   const byType = new Map<string, ActivityTypeBreakdown>();
 
   for (const a of activities) {
-    const entry = byType.get(a.type) ?? { type: a.type, count: 0, distance: 0 };
+    const entry = byType.get(a.type) ?? { type: a.type, count: 0, distance: 0, movingTime: 0 };
     entry.count += 1;
     entry.distance += a.distance;
+    entry.movingTime += a.movingTime;
     byType.set(a.type, entry);
   }
 
-  return Array.from(byType.values()).sort((a, b) => b.distance - a.distance);
+  return Array.from(byType.values()).sort((a, b) => b.movingTime - a.movingTime);
 }
 
 /** Returns the distinct activity types present in the dataset. */

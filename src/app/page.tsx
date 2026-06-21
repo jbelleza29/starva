@@ -9,6 +9,8 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { ActivityFilter } from "@/components/dashboard/ActivityFilter";
 import { DonutChart } from "@/components/dashboard/DonutChart";
 import type { DonutChartDataItem } from "@/components/dashboard/DonutChart";
+import { HeatmapChart } from "@/components/dashboard/HeatmapChart";
+import type { HeatmapDay } from "@/components/dashboard/HeatmapChart";
 import {
   formatDistance,
   formatDuration,
@@ -33,6 +35,10 @@ const DASHBOARD_QUERY = gql`
       activityCount
       totalElevationGain
     }
+    dailyHeatmap(days: 365) {
+      date
+      movingTime
+    }
   }
 `;
 
@@ -56,6 +62,7 @@ interface DashboardData {
     activityCount: number;
     totalElevationGain: number;
   };
+  dailyHeatmap: HeatmapDay[];
 }
 
 export default function Home() {
@@ -149,7 +156,7 @@ function PageContent() {
 }
 
 function Dashboard({ data }: { data: DashboardData }) {
-  const { summary, activityTypeBreakdown, activityTypes } = data;
+  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap } = data;
 
   if (summary.activityCount === 0) {
     return (
@@ -177,6 +184,11 @@ function Dashboard({ data }: { data: DashboardData }) {
         {/* TrendSection owns its own state + query — changing the filter only re-renders this panel. */}
         <TrendSection types={activityTypes} />
       </div>
+
+      <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+        <h2 className="mb-4 text-sm font-medium text-neutral-500">Training consistency</h2>
+        <HeatmapChart data={dailyHeatmap} />
+      </section>
     </div>
   );
 }

@@ -31,5 +31,6 @@ export const typeDefs = `#graphql
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int): [WeeklyLoad!]!
     summary: DashboardSummary!
+    stravaConnected: Boolean!
   }
 `;

@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -13,6 +15,7 @@ import {
 
 const DASHBOARD_QUERY = gql`
   query Dashboard {
+    stravaConnected
     summary {
       totalDistance
       totalMovingTime
@@ -27,6 +30,7 @@ const DASHBOARD_QUERY = gql`
 `;
 
 interface DashboardData {
+  stravaConnected: boolean;
   summary: {
     totalDistance: number;
     totalMovingTime: number;
@@ -39,24 +43,89 @@ interface DashboardData {
   }[];
 }
 
+// Suspense wrapper — required because PageContent uses useSearchParams.
 export default function Home() {
-  const { data, loading, error } = useQuery<DashboardData>(DASHBOARD_QUERY);
+  return (
+    <Suspense>
+      <PageContent />
+    </Suspense>
+  );
+}
+
+function PageContent() {
+  const searchParams = useSearchParams();
+  const stravaStatus = searchParams.get("strava") as "connected" | "denied" | "error" | null;
+
+  const { data, loading, error, refetch } = useQuery<DashboardData>(DASHBOARD_QUERY);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/strava/sync", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        setSyncMsg(`Synced ${json.synced} activities.`);
+        refetch();
+      } else {
+        setSyncMsg(`Sync failed: ${json.error}`);
+      }
+    } catch {
+      setSyncMsg("Network error — sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const connected = data?.stravaConnected ?? false;
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Starva</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Training load over the last 12 weeks, from your Strava activities.
-        </p>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Starva</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Training load over the last 12 weeks, from your Strava activities.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {connected ? (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="rounded-full bg-orange-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+            >
+              {syncing ? "Syncing…" : "Sync Strava"}
+            </button>
+          ) : (
+            <a
+              href="/api/strava/connect"
+              className="rounded-full bg-orange-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
+            >
+              Connect Strava
+            </a>
+          )}
+          {syncMsg ? (
+            <p className="text-xs text-neutral-500">{syncMsg}</p>
+          ) : null}
+        </div>
       </header>
+
+      {stravaStatus === "connected" ? (
+        <Banner variant="success">Connected to Strava — click Sync to load your activities.</Banner>
+      ) : stravaStatus === "denied" ? (
+        <Banner variant="error">Strava authorization was denied.</Banner>
+      ) : stravaStatus === "error" ? (
+        <Banner variant="error">Something went wrong connecting to Strava. Try again.</Banner>
+      ) : null}
 
       {loading ? <DashboardSkeleton /> : null}
 
       {error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-          Couldn&apos;t load your training data: {error.message}
-        </p>
+        <Banner variant="error">Couldn&apos;t load your training data: {error.message}</Banner>
       ) : null}
 
       {data && !loading ? <Dashboard data={data} /> : null}
@@ -70,14 +139,14 @@ function Dashboard({ data }: { data: DashboardData }) {
   if (summary.activityCount === 0) {
     return (
       <p className="rounded-xl border border-black/10 bg-white p-8 text-center text-sm text-neutral-500 dark:border-white/10 dark:bg-neutral-900">
-        No activities yet. Connect Strava to start tracking your training load.
+        No activities yet. Connect Strava and sync to see your training data.
       </p>
     );
   }
 
   const trend = weeklyTrainingLoad.map((week) => ({
     label: formatWeekLabel(week.weekStart),
-    value: Math.round(week.distance / 100) / 10, // meters -> km, 1 decimal
+    value: Math.round(week.distance / 100) / 10,
   }));
 
   return (
@@ -94,6 +163,22 @@ function Dashboard({ data }: { data: DashboardData }) {
         <TrendChart data={trend} unit=" km" />
       </section>
     </div>
+  );
+}
+
+function Banner({
+  variant,
+  children,
+}: {
+  variant: "success" | "error";
+  children: React.ReactNode;
+}) {
+  const styles =
+    variant === "success"
+      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-300"
+      : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300";
+  return (
+    <div className={`mb-6 rounded-xl border p-4 text-sm ${styles}`}>{children}</div>
   );
 }
 

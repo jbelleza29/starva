@@ -39,6 +39,12 @@ const DASHBOARD_QUERY = gql`
       date
       movingTime
     }
+    longestPerType {
+      type
+      name
+      distance
+      movingTime
+    }
     highlights {
       bestWeekDistance
       bestWeekStart
@@ -80,6 +86,12 @@ interface DashboardData {
     totalElevationGain: number;
   };
   dailyHeatmap: HeatmapDay[];
+  longestPerType: {
+    type: string;
+    name: string;
+    distance: number;
+    movingTime: number;
+  }[];
   goals: {
     id: string;
     activityType: string;
@@ -190,7 +202,7 @@ function PageContent() {
 }
 
 function Dashboard({ data }: { data: DashboardData }) {
-  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights, goals } = data;
+  const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights, longestPerType, goals } = data;
 
   if (summary.activityCount === 0) {
     return (
@@ -234,6 +246,19 @@ function Dashboard({ data }: { data: DashboardData }) {
           }
         />
       </section>
+
+      {longestPerType.length > 0 && (
+        <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {longestPerType.map((peak) => (
+            <KpiCard
+              key={peak.type}
+              label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+              value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
+              sublabel={peak.name}
+            />
+          ))}
+        </section>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">

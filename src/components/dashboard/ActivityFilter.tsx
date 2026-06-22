@@ -2,31 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export const ACTIVITY_ICONS: Record<string, string> = {
-  Run: "🏃",
-  Ride: "🚴",
-  Swim: "🏊",
-  Walk: "🚶",
-  Hike: "🥾",
-  WeightTraining: "🏋️",
-  Workout: "💪",
-  Yoga: "🧘",
-  EBikeRide: "⚡",
-  VirtualRide: "💻",
-  VirtualRun: "💻",
-  AlpineSki: "⛷️",
-  NordicSki: "🎿",
-  Snowboard: "🏂",
-  Kayaking: "🚣",
-  Rowing: "🚣",
-  RockClimbing: "🧗",
-  IceSkate: "⛸️",
-  Skateboard: "🛹",
-};
-
-export function getActivityIcon(type: string): string {
-  return ACTIVITY_ICONS[type] ?? "🏅";
-}
+import { ACTIVITY_ICONS, getActivityIcon, formatActivityType } from "@/lib/activityIcons";
+export { ACTIVITY_ICONS, getActivityIcon };
 
 export interface ActivityFilterProps {
   /** Available activity types derived from the dataset. */
@@ -54,7 +31,7 @@ export function ActivityFilter({ types, value, onChange }: ActivityFilterProps) 
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  const selectedLabel = value ? `${getActivityIcon(value)} ${value}` : "🏅 All activities";
+  const selectedLabel = value ? `${getActivityIcon(value)} ${formatActivityType(value)}` : "🏅 All activities";
 
   return (
     <div ref={ref} className="relative inline-block">
@@ -83,7 +60,7 @@ export function ActivityFilter({ types, value, onChange }: ActivityFilterProps) 
           className="absolute left-0 top-full z-10 mt-2 min-w-[190px] overflow-hidden rounded-xl border border-black/10 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-neutral-900"
         >
           {[null, ...types].map((type) => {
-            const label = type ? `${getActivityIcon(type)} ${type}` : "🏅 All activities";
+            const label = type ? `${getActivityIcon(type)} ${formatActivityType(type)}` : "🏅 All activities";
             const selected = value === type;
             return (
               <li

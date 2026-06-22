@@ -6,7 +6,8 @@ import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
-import { ActivityFilter, getActivityIcon } from "@/components/dashboard/ActivityFilter";
+import { ActivityFilter } from "@/components/dashboard/ActivityFilter";
+import { getActivityIcon, formatActivityType } from "@/lib/activityIcons";
 import { DonutChart } from "@/components/dashboard/DonutChart";
 import type { DonutChartDataItem } from "@/components/dashboard/DonutChart";
 import { HeatmapChart } from "@/components/dashboard/HeatmapChart";
@@ -259,7 +260,7 @@ function Dashboard({ data }: { data: DashboardData }) {
               <KpiCard
                 key={peak.type}
                 href={`/activities/${peak.id}`}
-                label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+                label={`${getActivityIcon(peak.type)} Longest ${formatActivityType(peak.type)}`}
                 value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
                 sublabel={peak.name}
               />

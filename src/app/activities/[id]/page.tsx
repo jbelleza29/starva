@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActivityById } from "@/lib/activities";
-import { getActivityIcon } from "@/components/dashboard/ActivityFilter";
+import { getActivityIcon, formatActivityType } from "@/lib/activityIcons";
 import {
   formatDistance,
   formatDuration,
@@ -10,7 +10,6 @@ import {
 } from "@/lib/format";
 
 // Server Component — fetches data directly, no Apollo Client needed.
-// Demonstrates a different data-fetching pattern alongside the client-side approach.
 export default async function ActivityPage({
   params,
 }: {
@@ -53,7 +52,7 @@ export default async function ActivityPage({
 
       <div className="mt-6">
         <p className="text-sm text-neutral-500">
-          {getActivityIcon(activity.type)} {activity.type} · {date}
+          {getActivityIcon(activity.type)} {formatActivityType(activity.type)} · {date}
         </p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{activity.name}</h1>
       </div>

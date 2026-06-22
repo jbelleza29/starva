@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { getActivityIcon } from "@/components/dashboard/ActivityFilter";
+import { getActivityIcon } from "@/lib/activityIcons";
 import { formatDistance, formatDuration } from "@/lib/format";
 
 const GOALS_QUERY = gql`

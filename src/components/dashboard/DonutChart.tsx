@@ -2,7 +2,7 @@
 
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { formatDuration } from "@/lib/format";
-import { getActivityIcon } from "./ActivityFilter";
+import { getActivityIcon } from "@/lib/activityIcons";
 
 const TYPE_COLORS: Record<string, string> = {
   Run: "#f97316",

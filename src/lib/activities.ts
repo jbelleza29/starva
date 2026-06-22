@@ -194,6 +194,7 @@ export async function getActivityTypes(): Promise<string[]> {
 }
 
 export interface ActivityPeak {
+  id: string;
   type: string;
   name: string;
   distance: number;
@@ -217,11 +218,41 @@ export async function getLongestPerType(): Promise<ActivityPeak[]> {
   }
 
   return Array.from(byType.values()).map((a) => ({
+    id: a.id,
     type: a.type,
     name: a.name,
     distance: a.distance,
     movingTime: a.movingTime,
   }));
+}
+
+/** Fetch a single activity by its id (MongoDB _id or sample data id). */
+export async function getActivityById(id: string): Promise<ActivityRecord | null> {
+  const conn = await connectToDatabase();
+
+  if (conn) {
+    try {
+      const doc = await Activity.findById(id).lean();
+      if (!doc) return null;
+      return {
+        id: String(doc._id),
+        stravaId: doc.stravaId,
+        name: doc.name,
+        type: doc.type,
+        startDate: new Date(doc.startDate).toISOString(),
+        distance: doc.distance,
+        movingTime: doc.movingTime,
+        elapsedTime: doc.elapsedTime,
+        totalElevationGain: doc.totalElevationGain ?? 0,
+        averageSpeed: doc.averageSpeed ?? 0,
+        averageHeartrate: doc.averageHeartrate,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return getSampleActivities().find((a) => a.id === id) ?? null;
 }
 
 export interface DailyActivity {

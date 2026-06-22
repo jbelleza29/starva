@@ -7,6 +7,7 @@ import {
   getDailyHeatmap,
   getHighlights,
   getLongestPerType,
+  getActivityById,
 } from "@/lib/activities";
 import { getGoals, createGoal, deleteGoal } from "@/lib/goals";
 import { connectToDatabase } from "@/lib/db";
@@ -14,6 +15,7 @@ import { StravaAccount } from "@/lib/models/StravaAccount";
 
 export const resolvers = {
   Query: {
+    activity: (_parent: unknown, args: { id: string }) => getActivityById(args.id),
     activities: (_parent: unknown, args: { limit?: number }) =>
       getActivities({ limit: args.limit }),
     weeklyTrainingLoad: (_parent: unknown, args: { weeks?: number; type?: string }) =>

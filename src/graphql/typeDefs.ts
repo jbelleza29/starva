@@ -35,6 +35,7 @@ export const typeDefs = `#graphql
   }
 
   type ActivityPeak {
+    id: ID!
     type: String!
     name: String!
     distance: Float!
@@ -72,6 +73,7 @@ export const typeDefs = `#graphql
   }
 
   type Query {
+    activity(id: ID!): Activity
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
     summary: DashboardSummary!

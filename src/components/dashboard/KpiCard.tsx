@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 export interface KpiCardProps {
-  /** Short metric name, e.g. "Total distance". */
-  label: string;
+  /** Short metric name, e.g. "Total distance". Accepts ReactNode for styled labels. */
+  label: React.ReactNode;
   /** Pre-formatted value, e.g. "412 km". */
   value: string;
   /** Optional context line under the value. */

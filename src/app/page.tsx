@@ -263,7 +263,11 @@ function Dashboard({ data }: { data: DashboardData }) {
                 className="block rounded-xl transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-orange-400"
               >
                 <KpiCard
-                  label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+                  label={
+                    <span className="text-orange-500 underline decoration-orange-400/60 underline-offset-2">
+                      {getActivityIcon(peak.type)} Longest {peak.type}
+                    </span>
+                  }
                   value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
                   sublabel={peak.name}
                 />

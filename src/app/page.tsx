@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
@@ -257,21 +256,13 @@ function Dashboard({ data }: { data: DashboardData }) {
             })
             .slice(0, 4)
             .map((peak) => (
-              <Link
+              <KpiCard
                 key={peak.type}
                 href={`/activities/${peak.id}`}
-                className="block rounded-xl transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-orange-400"
-              >
-                <KpiCard
-                  label={
-                    <span className="text-orange-500 underline decoration-orange-400/60 underline-offset-2">
-                      {getActivityIcon(peak.type)} Longest {peak.type}
-                    </span>
-                  }
-                  value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
-                  sublabel={peak.name}
-                />
-              </Link>
+                label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+                value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
+                sublabel={peak.name}
+              />
             ))}
         </section>
       )}

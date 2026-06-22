@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
@@ -114,6 +114,26 @@ interface DashboardData {
   };
 }
 
+// ── Sync rate-limiting ──────────────────────────────────────────────────────
+const SYNC_KEY = "starva_sync";
+const FREE_SYNCS = 2;
+const BASE_COOLDOWN_MS = 5 * 60 * 1000;
+
+interface SyncMeta { count: number; lastSyncAt: number; cooldownMs: number }
+
+function loadSyncMeta(): SyncMeta {
+  try { const r = localStorage.getItem(SYNC_KEY); if (r) return JSON.parse(r); } catch {}
+  return { count: 0, lastSyncAt: 0, cooldownMs: 0 };
+}
+function saveSyncMeta(m: SyncMeta) {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(m)); } catch {}
+}
+function fmtCountdown(ms: number) {
+  const s = Math.ceil(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function Home() {
   return (
     <Suspense>
@@ -128,11 +148,29 @@ function PageContent() {
 
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  // Lazy initializer reads localStorage on the client; falls back to defaults on the server.
+  const [syncMeta, setSyncMeta] = useState<SyncMeta>(() =>
+    typeof window !== "undefined" ? loadSyncMeta() : { count: 0, lastSyncAt: 0, cooldownMs: 0 },
+  );
+  const [remainingMs, setRemainingMs] = useState(0);
+
+  useEffect(() => {
+    if (syncMeta.cooldownMs === 0) return;
+    const compute = () =>
+      Math.max(0, syncMeta.cooldownMs - (Date.now() - syncMeta.lastSyncAt));
+    // setTimeout(fn, 0) is async — avoids the "synchronous setState in effect" lint rule.
+    const init = setTimeout(() => setRemainingMs(compute()), 0);
+    const id = setInterval(() => setRemainingMs(compute()), 1000);
+    return () => { clearTimeout(init); clearInterval(id); };
+  }, [syncMeta]);
+
+  const canSync = syncMeta.count < FREE_SYNCS || remainingMs === 0;
 
   const client = useApolloClient();
   const { data, loading, error } = useQuery<DashboardData>(DASHBOARD_QUERY);
 
   async function handleSync() {
+    if (!canSync || syncing) return;
     setSyncing(true);
     setSyncMsg(null);
     try {
@@ -140,7 +178,14 @@ function PageContent() {
       const json = await res.json();
       if (json.ok) {
         setSyncMsg(`Synced ${json.synced} activities.`);
-        // Refetch all active queries — both Dashboard and TrendLoad.
+        const newCount = syncMeta.count + 1;
+        const newCooldown =
+          newCount <= FREE_SYNCS ? 0
+          : newCount === FREE_SYNCS + 1 ? BASE_COOLDOWN_MS
+          : syncMeta.cooldownMs * 2;
+        const newMeta = { count: newCount, lastSyncAt: Date.now(), cooldownMs: newCooldown };
+        saveSyncMeta(newMeta);
+        setSyncMeta(newMeta);
         await client.refetchQueries({ include: "active" });
       } else {
         setSyncMsg(`Sync failed: ${json.error}`);
@@ -168,7 +213,7 @@ function PageContent() {
           {connected ? (
             <button
               onClick={handleSync}
-              disabled={syncing}
+              disabled={syncing || !canSync}
               className="rounded-full bg-orange-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
               {syncing ? "Syncing…" : "Sync Strava"}
@@ -181,7 +226,11 @@ function PageContent() {
               Connect Strava
             </a>
           )}
-          {syncMsg ? <p className="text-xs text-neutral-500">{syncMsg}</p> : null}
+          {remainingMs > 0 ? (
+            <p className="text-xs text-neutral-400">Next sync in {fmtCountdown(remainingMs)}</p>
+          ) : syncMsg ? (
+            <p className="text-xs text-neutral-500">{syncMsg}</p>
+          ) : null}
         </div>
       </header>
 

@@ -8,7 +8,7 @@ import {
   formatElevation,
   formatPace,
 } from "@/lib/format";
-import { ActivityRouteMap } from "@/components/ActivityRouteMap";
+import { ActivityMap } from "@/components/ActivityMap";
 
 export default async function ActivityPage({
   params,
@@ -59,7 +59,7 @@ export default async function ActivityPage({
 
       {activity.summaryPolyline ? (
         <div className="mt-6">
-          <ActivityRouteMap polyline={activity.summaryPolyline} />
+          <ActivityMap polyline={activity.summaryPolyline} />
         </div>
       ) : null}
 

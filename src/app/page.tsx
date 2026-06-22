@@ -198,19 +198,32 @@ function PageContent() {
   }
 
   const connected = data?.stravaConnected ?? false;
+  const allowSync = process.env.NEXT_PUBLIC_ALLOW_SYNC === "true";
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
+      {!allowSync && (
+        <div className="mb-6 rounded-xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
+          <p className="text-sm font-medium">You&apos;re viewing John&apos;s real training data.</p>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            Multi-user support is in progress — you&apos;ll soon be able to connect your
+            own Strava and see your data here.
+          </p>
+        </div>
+      )}
+
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Starva</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Training load over the last 12 weeks, from your Strava activities.
+            {allowSync
+              ? "Training load over the last 12 weeks, from your Strava activities."
+              : "John's training load over the last 12 weeks."}
           </p>
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {connected ? (
+          {allowSync && (connected ? (
             <button
               onClick={handleSync}
               disabled={syncing || !canSync}
@@ -225,7 +238,7 @@ function PageContent() {
             >
               Connect Strava
             </a>
-          )}
+          ))}
           {remainingMs > 0 ? (
             <p className="text-xs text-neutral-400">Next sync in {fmtCountdown(remainingMs)}</p>
           ) : syncMsg ? (

@@ -92,6 +92,7 @@ export interface StravaActivity {
   total_elevation_gain: number;
   average_speed: number;
   average_heartrate?: number;
+  map?: { summary_polyline?: string };
 }
 
 /** Fetch one page of the athlete's activities (newest first). */
@@ -122,5 +123,6 @@ export function mapStravaActivity(a: StravaActivity) {
     totalElevationGain: a.total_elevation_gain ?? 0,
     averageSpeed: a.average_speed ?? 0,
     averageHeartrate: a.average_heartrate,
+    summaryPolyline: a.map?.summary_polyline || undefined,
   };
 }

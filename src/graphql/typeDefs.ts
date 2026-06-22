@@ -11,6 +11,7 @@ export const typeDefs = `#graphql
     totalElevationGain: Float!
     averageSpeed: Float!
     averageHeartrate: Float
+    summaryPolyline: String
   }
 
   type WeeklyLoad {

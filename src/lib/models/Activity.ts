@@ -11,6 +11,7 @@ export interface ActivityDoc {
   totalElevationGain: number; // meters
   averageSpeed: number; // m/s
   averageHeartrate?: number; // bpm
+  summaryPolyline?: string;  // Google-encoded route polyline from Strava
 }
 
 const ActivitySchema = new Schema<ActivityDoc>({
@@ -24,6 +25,7 @@ const ActivitySchema = new Schema<ActivityDoc>({
   totalElevationGain: { type: Number, default: 0 },
   averageSpeed: { type: Number, default: 0 },
   averageHeartrate: { type: Number },
+  summaryPolyline: { type: String },
 });
 
 export const Activity: Model<ActivityDoc> =

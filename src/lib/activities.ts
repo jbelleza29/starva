@@ -14,6 +14,7 @@ export interface ActivityRecord {
   totalElevationGain: number;
   averageSpeed: number;
   averageHeartrate?: number;
+  summaryPolyline?: string;
 }
 
 interface ActivityQuery {
@@ -44,6 +45,7 @@ export async function getActivities(query?: ActivityQuery): Promise<ActivityReco
       totalElevationGain: d.totalElevationGain ?? 0,
       averageSpeed: d.averageSpeed ?? 0,
       averageHeartrate: d.averageHeartrate,
+      summaryPolyline: d.summaryPolyline,
     }));
   }
 
@@ -246,6 +248,7 @@ export async function getActivityById(id: string): Promise<ActivityRecord | null
         totalElevationGain: doc.totalElevationGain ?? 0,
         averageSpeed: doc.averageSpeed ?? 0,
         averageHeartrate: doc.averageHeartrate,
+        summaryPolyline: doc.summaryPolyline,
       };
     } catch {
       return null;

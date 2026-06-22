@@ -8,8 +8,8 @@ import {
   formatElevation,
   formatPace,
 } from "@/lib/format";
+import { ActivityRouteMap } from "@/components/ActivityRouteMap";
 
-// Server Component — fetches data directly, no Apollo Client needed.
 export default async function ActivityPage({
   params,
 }: {
@@ -57,7 +57,13 @@ export default async function ActivityPage({
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{activity.name}</h1>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {activity.summaryPolyline ? (
+        <div className="mt-6">
+          <ActivityRouteMap polyline={activity.summaryPolyline} />
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map(({ label, value }) => (
           <div
             key={label}

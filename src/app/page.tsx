@@ -221,16 +221,11 @@ function Dashboard({ data }: { data: DashboardData }) {
         <KpiCard label="Elevation gain" value={formatElevation(summary.totalElevationGain)} />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-4">
         <KpiCard
           label="Best week"
           value={formatDistance(highlights.bestWeekDistance)}
           sublabel={highlights.bestWeekStart ? `w/o ${formatWeekLabel(highlights.bestWeekStart)}` : undefined}
-        />
-        <KpiCard
-          label="Longest activity"
-          value={formatDistance(highlights.longestActivityDistance)}
-          sublabel={highlights.longestActivityName}
         />
         <KpiCard
           label="This week"
@@ -249,14 +244,23 @@ function Dashboard({ data }: { data: DashboardData }) {
 
       {longestPerType.length > 0 && (
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {longestPerType.map((peak) => (
-            <KpiCard
-              key={peak.type}
-              label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
-              value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
-              sublabel={peak.name}
-            />
-          ))}
+          {/* Top 4 by time spent — matches the order of activityTypeBreakdown */}
+          {longestPerType
+            .filter((p) => activityTypeBreakdown.some((b) => b.type === p.type))
+            .sort((a, b) => {
+              const ai = activityTypeBreakdown.findIndex((x) => x.type === a.type);
+              const bi = activityTypeBreakdown.findIndex((x) => x.type === b.type);
+              return ai - bi;
+            })
+            .slice(0, 4)
+            .map((peak) => (
+              <KpiCard
+                key={peak.type}
+                label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+                value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
+                sublabel={peak.name}
+              />
+            ))}
         </section>
       )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
@@ -40,6 +41,7 @@ const DASHBOARD_QUERY = gql`
       movingTime
     }
     longestPerType {
+      id
       type
       name
       distance
@@ -87,6 +89,7 @@ interface DashboardData {
   };
   dailyHeatmap: HeatmapDay[];
   longestPerType: {
+    id: string;
     type: string;
     name: string;
     distance: number;
@@ -254,12 +257,17 @@ function Dashboard({ data }: { data: DashboardData }) {
             })
             .slice(0, 4)
             .map((peak) => (
-              <KpiCard
+              <Link
                 key={peak.type}
-                label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
-                value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
-                sublabel={peak.name}
-              />
+                href={`/activities/${peak.id}`}
+                className="block rounded-xl transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-orange-400"
+              >
+                <KpiCard
+                  label={`${getActivityIcon(peak.type)} Longest ${peak.type}`}
+                  value={peak.distance > 100 ? formatDistance(peak.distance) : formatDuration(peak.movingTime)}
+                  sublabel={peak.name}
+                />
+              </Link>
             ))}
         </section>
       )}

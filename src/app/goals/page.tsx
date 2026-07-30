@@ -1,59 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { gql } from "@apollo/client";
-import { useMutation, useQuery } from "@apollo/client/react";
 import { getActivityIcon } from "@/lib/activityIcons";
 import { formatDistance, formatDuration } from "@/lib/format";
-
-const GOALS_QUERY = gql`
-  query Goals {
-    goals {
-      id
-      activityType
-      metric
-      target
-      month
-      progress
-      createdAt
-    }
-    activityTypes
-  }
-`;
-
-const CREATE_GOAL = gql`
-  mutation CreateGoal(
-    $activityType: String!
-    $metric: String!
-    $target: Float!
-    $month: String!
-  ) {
-    createGoal(
-      activityType: $activityType
-      metric: $metric
-      target: $target
-      month: $month
-    ) {
-      id activityType metric target month progress createdAt
-    }
-  }
-`;
-
-const DELETE_GOAL = gql`
-  mutation DeleteGoal($id: ID!) {
-    deleteGoal(id: $id)
-  }
-`;
-
-interface GoalRecord {
-  id: string;
-  activityType: string;
-  metric: string;
-  target: number;
-  month: string;
-  progress: number;
-  createdAt: string;
-}
+import { useGoalsQuery, useCreateGoal, useDeleteGoal } from "@/lib/queries";
+import type { GoalRecord } from "@/lib/queries";
 
 const METRICS = [
   { key: "distance", label: "Distance", unit: "km"  },
@@ -77,19 +28,10 @@ function formatValue(value: number, metric: string): string {
 }
 
 export default function GoalsPage() {
-  const { data, loading } = useQuery<{ goals: GoalRecord[]; activityTypes: string[] }>(
-    GOALS_QUERY,
-  );
+  const { data, isLoading } = useGoalsQuery();
+  const createGoal = useCreateGoal();
+  const deleteGoal = useDeleteGoal();
 
-  const [createGoal, { loading: creating }] = useMutation(CREATE_GOAL, {
-    refetchQueries: [{ query: GOALS_QUERY }],
-  });
-
-  const [deleteGoal] = useMutation(DELETE_GOAL, {
-    refetchQueries: [{ query: GOALS_QUERY }],
-  });
-
-  // Form state
   const [activityType, setActivityType] = useState("Run");
   const [metric, setMetric] = useState<"distance" | "time">("distance");
   const [targetInput, setTargetInput] = useState("");
@@ -102,14 +44,14 @@ export default function GoalsPage() {
     const raw = parseFloat(targetInput);
     if (!raw || raw <= 0) return;
     const target = metric === "distance" ? raw * 1000 : raw * 3600;
-    await createGoal({ variables: { activityType, metric, target, month } });
+    await createGoal.mutateAsync({ activityType, metric, target, month });
     setTargetInput("");
   }
 
   const goals = data?.goals ?? [];
   const thisMonth = currentMonth();
-  const activeGoals  = goals.filter((g) => g.month === thisMonth);
-  const pastGoals    = goals.filter((g) => g.month !== thisMonth);
+  const activeGoals = goals.filter((g) => g.month === thisMonth);
+  const pastGoals   = goals.filter((g) => g.month !== thisMonth);
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
@@ -123,7 +65,6 @@ export default function GoalsPage() {
         <h2 className="mb-4 text-sm font-semibold">New goal</h2>
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
 
-          {/* Activity type */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-neutral-500">Activity</label>
             <select
@@ -139,7 +80,6 @@ export default function GoalsPage() {
             </select>
           </div>
 
-          {/* Metric toggle */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-neutral-500">Metric</label>
             <div className="flex rounded-lg border border-black/10 dark:border-white/10 overflow-hidden">
@@ -160,7 +100,6 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          {/* Target */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-neutral-500">
               Target ({metric === "distance" ? "km" : "hrs"})
@@ -177,7 +116,6 @@ export default function GoalsPage() {
             />
           </div>
 
-          {/* Month */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-neutral-500">Month</label>
             <input
@@ -190,16 +128,16 @@ export default function GoalsPage() {
 
           <button
             type="submit"
-            disabled={creating || !targetInput}
+            disabled={createGoal.isPending || !targetInput}
             className="rounded-full bg-orange-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
           >
-            {creating ? "Adding…" : "Add goal"}
+            {createGoal.isPending ? "Adding…" : "Add goal"}
           </button>
         </form>
       </section>
 
       {/* ── Goals list ──────────────────────────────────────── */}
-      {loading ? (
+      {isLoading ? (
         <div className="mt-6 h-32 animate-pulse rounded-xl border border-black/10 bg-neutral-100 dark:border-white/10 dark:bg-neutral-900" />
       ) : goals.length === 0 ? (
         <p className="mt-8 text-center text-sm text-neutral-400">
@@ -208,10 +146,18 @@ export default function GoalsPage() {
       ) : (
         <div className="mt-6 flex flex-col gap-6">
           {activeGoals.length > 0 && (
-            <GoalGroup title="This month" goals={activeGoals} onDelete={deleteGoal} />
+            <GoalGroup
+              title="This month"
+              goals={activeGoals}
+              onDelete={(id) => deleteGoal.mutate(id)}
+            />
           )}
           {pastGoals.length > 0 && (
-            <GoalGroup title="Past goals" goals={pastGoals} onDelete={deleteGoal} />
+            <GoalGroup
+              title="Past goals"
+              goals={pastGoals}
+              onDelete={(id) => deleteGoal.mutate(id)}
+            />
           )}
         </div>
       )}
@@ -226,7 +172,7 @@ function GoalGroup({
 }: {
   title: string;
   goals: GoalRecord[];
-  onDelete: (opts: { variables: { id: string } }) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <section>
@@ -247,7 +193,7 @@ function GoalCard({
   onDelete,
 }: {
   goal: GoalRecord;
-  onDelete: (opts: { variables: { id: string } }) => void;
+  onDelete: (id: string) => void;
 }) {
   const pct = Math.min(Math.round((goal.progress / goal.target) * 100), 100);
   const done = pct >= 100;
@@ -268,7 +214,7 @@ function GoalCard({
           </p>
         </div>
         <button
-          onClick={() => onDelete({ variables: { id: goal.id } })}
+          onClick={() => onDelete(goal.id)}
           className="shrink-0 rounded-full p-1 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
           aria-label="Delete goal"
         >

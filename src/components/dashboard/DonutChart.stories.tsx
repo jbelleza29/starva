@@ -17,7 +17,7 @@ const meta = {
     ),
   ],
   args: {
-    animate: false, // disable Recharts mount animation for deterministic Chromatic snapshots
+    animate: false, // disable mount animation for deterministic Chromatic snapshots
     data: [
       { type: "Run",  count: 120, distance: 850_000,  movingTime: 432_000 },
       { type: "Ride", count: 45,  distance: 1_200_000, movingTime: 180_000 },

@@ -1,138 +1,31 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { gql } from "@apollo/client";
-import { useApolloClient, useQuery } from "@apollo/client/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
 import { ActivityFilter } from "@/components/dashboard/ActivityFilter";
 import { getActivityIcon, formatActivityType } from "@/lib/activityIcons";
 import { DonutChart } from "@/components/dashboard/DonutChart";
-import type { DonutChartDataItem } from "@/components/dashboard/DonutChart";
 import { HeatmapChart } from "@/components/dashboard/HeatmapChart";
-import type { HeatmapDay } from "@/components/dashboard/HeatmapChart";
 import {
   formatDistance,
   formatDuration,
   formatElevation,
   formatWeekLabel,
 } from "@/lib/format";
+import { useDashboardQuery, useTrendQuery, useTrendByTypeQuery, useActivitiesQuery } from "@/lib/queries";
+import { typeColor } from "@/lib/activityColors";
+import type { DashboardData } from "@/lib/queries";
+import { ActivitiesGrid } from "@/components/dashboard/ActivitiesGrid";
+import { useSyncStore, FREE_SYNCS } from "@/lib/store/syncStore";
 
-// Static query — no filter variables. Drives everything except the trend chart.
-const DASHBOARD_QUERY = gql`
-  query Dashboard {
-    stravaConnected
-    activityTypes
-    activityTypeBreakdown {
-      type
-      count
-      distance
-      movingTime
-    }
-    summary {
-      totalDistance
-      totalMovingTime
-      activityCount
-      totalElevationGain
-    }
-    dailyHeatmap(days: 365) {
-      date
-      movingTime
-    }
-    longestPerType {
-      id
-      type
-      name
-      distance
-      movingTime
-    }
-    highlights {
-      bestWeekDistance
-      bestWeekStart
-      longestActivityDistance
-      longestActivityName
-      longestActivityType
-      currentWeekDistance
-      avgWeekDistance
-    }
-    goals {
-      id
-      activityType
-      metric
-      target
-      month
-      progress
-    }
-  }
-`;
-
-// Isolated query owned by TrendSection — re-runs only when the filter changes.
-const TREND_QUERY = gql`
-  query TrendLoad($type: String) {
-    weeklyTrainingLoad(weeks: 12, type: $type) {
-      weekStart
-      distance
-    }
-  }
-`;
-
-interface DashboardData {
-  stravaConnected: boolean;
-  activityTypes: string[];
-  activityTypeBreakdown: DonutChartDataItem[];
-  summary: {
-    totalDistance: number;
-    totalMovingTime: number;
-    activityCount: number;
-    totalElevationGain: number;
-  };
-  dailyHeatmap: HeatmapDay[];
-  longestPerType: {
-    id: string;
-    type: string;
-    name: string;
-    distance: number;
-    movingTime: number;
-  }[];
-  goals: {
-    id: string;
-    activityType: string;
-    metric: string;
-    target: number;
-    month: string;
-    progress: number;
-  }[];
-  highlights: {
-    bestWeekDistance: number;
-    bestWeekStart: string;
-    longestActivityDistance: number;
-    longestActivityName: string;
-    longestActivityType: string;
-    currentWeekDistance: number;
-    avgWeekDistance: number;
-  };
-}
-
-// ── Sync rate-limiting ──────────────────────────────────────────────────────
-const SYNC_KEY = "starva_sync";
-const FREE_SYNCS = 2;
-const BASE_COOLDOWN_MS = 5 * 60 * 1000;
-
-interface SyncMeta { count: number; lastSyncAt: number; cooldownMs: number }
-
-function loadSyncMeta(): SyncMeta {
-  try { const r = localStorage.getItem(SYNC_KEY); if (r) return JSON.parse(r); } catch {}
-  return { count: 0, lastSyncAt: 0, cooldownMs: 0 };
-}
-function saveSyncMeta(m: SyncMeta) {
-  try { localStorage.setItem(SYNC_KEY, JSON.stringify(m)); } catch {}
-}
 function fmtCountdown(ms: number) {
   const s = Math.ceil(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
-// ────────────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   return (
@@ -148,26 +41,21 @@ function PageContent() {
 
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
-  // Lazy initializer reads localStorage on the client; falls back to defaults on the server.
-  const [syncMeta, setSyncMeta] = useState<SyncMeta>(() =>
-    typeof window !== "undefined" ? loadSyncMeta() : { count: 0, lastSyncAt: 0, cooldownMs: 0 },
-  );
   const [remainingMs, setRemainingMs] = useState(0);
 
+  const { count, lastSyncAt, cooldownMs, recordSync } = useSyncStore();
+  const queryClient = useQueryClient();
+  const { data, isLoading, error } = useDashboardQuery();
+
   useEffect(() => {
-    if (syncMeta.cooldownMs === 0) return;
-    const compute = () =>
-      Math.max(0, syncMeta.cooldownMs - (Date.now() - syncMeta.lastSyncAt));
-    // setTimeout(fn, 0) is async — avoids the "synchronous setState in effect" lint rule.
+    if (cooldownMs === 0) return;
+    const compute = () => Math.max(0, cooldownMs - (Date.now() - lastSyncAt));
     const init = setTimeout(() => setRemainingMs(compute()), 0);
     const id = setInterval(() => setRemainingMs(compute()), 1000);
     return () => { clearTimeout(init); clearInterval(id); };
-  }, [syncMeta]);
+  }, [cooldownMs, lastSyncAt]);
 
-  const canSync = syncMeta.count < FREE_SYNCS || remainingMs === 0;
-
-  const client = useApolloClient();
-  const { data, loading, error } = useQuery<DashboardData>(DASHBOARD_QUERY);
+  const canSync = count < FREE_SYNCS || remainingMs === 0;
 
   async function handleSync() {
     if (!canSync || syncing) return;
@@ -178,15 +66,8 @@ function PageContent() {
       const json = await res.json();
       if (json.ok) {
         setSyncMsg(`Synced ${json.synced} activities.`);
-        const newCount = syncMeta.count + 1;
-        const newCooldown =
-          newCount <= FREE_SYNCS ? 0
-          : newCount === FREE_SYNCS + 1 ? BASE_COOLDOWN_MS
-          : syncMeta.cooldownMs * 2;
-        const newMeta = { count: newCount, lastSyncAt: Date.now(), cooldownMs: newCooldown };
-        saveSyncMeta(newMeta);
-        setSyncMeta(newMeta);
-        await client.refetchQueries({ include: "active" });
+        recordSync();
+        await queryClient.invalidateQueries();
       } else {
         setSyncMsg(`Sync failed: ${json.error}`);
       }
@@ -255,7 +136,7 @@ function PageContent() {
         <Banner variant="error">Something went wrong connecting to Strava. Try again.</Banner>
       ) : null}
 
-      {loading && !data ? <DashboardSkeleton /> : null}
+      {isLoading ? <DashboardSkeleton /> : null}
 
       {error ? (
         <Banner variant="error">Couldn&apos;t load your training data: {error.message}</Banner>
@@ -268,6 +149,7 @@ function PageContent() {
 
 function Dashboard({ data }: { data: DashboardData }) {
   const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights, longestPerType, goals } = data;
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   if (summary.activityCount === 0) {
     return (
@@ -309,7 +191,6 @@ function Dashboard({ data }: { data: DashboardData }) {
 
       {longestPerType.length > 0 && (
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {/* Top 4 by time spent — matches the order of activityTypeBreakdown */}
           {longestPerType
             .filter((p) => activityTypeBreakdown.some((b) => b.type === p.type))
             .sort((a, b) => {
@@ -336,9 +217,10 @@ function Dashboard({ data }: { data: DashboardData }) {
           <DonutChart data={activityTypeBreakdown} />
         </section>
 
-        {/* TrendSection owns its own state + query — changing the filter only re-renders this panel. */}
-        <TrendSection types={activityTypes} />
+        <TrendSection types={activityTypes} value={selectedType} onChange={setSelectedType} />
       </div>
+
+      <RecentActivitiesSection type={selectedType} />
 
       <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-medium text-neutral-500">Training consistency</h2>
@@ -391,31 +273,73 @@ function Dashboard({ data }: { data: DashboardData }) {
   );
 }
 
-// Isolated component: owns selectedType state and the TREND_QUERY.
-// Nothing outside this subtree re-renders when the filter changes.
-function TrendSection({ types }: { types: string[] }) {
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+const TREND_WINDOW_DAYS = 12 * 7;
+// Snapshot at module load — render-time Date.now() trips react-hooks/purity,
+// and a session-fixed window is fine for this dashboard.
+const TREND_CUTOFF_MS = Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
-  const { data } = useQuery<{
-    weeklyTrainingLoad: { weekStart: string; distance: number }[];
-  }>(TREND_QUERY, {
-    variables: { type: selectedType },
-  });
+function TrendSection({
+  types,
+  value,
+  onChange,
+}: {
+  types: string[];
+  value: string | null;
+  onChange: (type: string | null) => void;
+}) {
+  const { data: singleData } = useTrendQuery(value, value !== null);
+  const { data: byTypeData } = useTrendByTypeQuery(value === null);
 
-  const trend = (data?.weeklyTrainingLoad ?? []).map((week) => ({
-    label: formatWeekLabel(week.weekStart),
-    value: Math.round(week.distance / 100) / 10,
-  }));
+  const toPoints = (weeks: { weekStart: string; movingTime: number }[]) =>
+    weeks.map((week) => ({
+      label: formatWeekLabel(week.weekStart),
+      value: Math.round(week.movingTime / 360) / 10,
+    }));
 
-  const label = selectedType ? `Weekly distance · ${selectedType}` : "Weekly distance";
+  const series = value
+    ? [{ name: value, data: toPoints(singleData?.weeklyTrainingLoad ?? []) }]
+    : (byTypeData?.weeklyTrainingLoadByType ?? [])
+        // Drop types with zero hours across the whole window.
+        .filter((t) => t.series.some((week) => week.movingTime > 0))
+        .filter((t) => t.type !== "Kayaking")
+        .map((t, index) => ({
+          name: t.type,
+          color: typeColor(t.type, index),
+          data: toPoints(t.series),
+        }));
+
+  const label = value ? `Weekly hours · ${value}` : "Weekly hours by activity";
 
   return (
     <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900 md:col-span-2">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-medium text-neutral-500">{label}</h2>
-        <ActivityFilter types={types} value={selectedType} onChange={setSelectedType} />
+        <ActivityFilter types={types} value={value} onChange={onChange} />
       </div>
-      <TrendChart data={trend} unit=" km" />
+      <TrendChart series={series} unit=" h" />
+    </section>
+  );
+}
+
+/** The activities behind the trend chart — same 12-week window, same type filter. */
+function RecentActivitiesSection({ type }: { type: string | null }) {
+  const { data, isLoading } = useActivitiesQuery();
+
+  const rows = (data?.activities ?? []).filter(
+    (a) => new Date(a.startDate).getTime() >= TREND_CUTOFF_MS && (!type || a.type === type),
+  );
+
+  return (
+    <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-medium text-neutral-500">
+          Activities · last 12 weeks{type ? ` · ${type}` : ""}
+        </h2>
+        <Link href="/activities" className="text-xs text-orange-500 hover:underline">
+          All activities →
+        </Link>
+      </div>
+      <ActivitiesGrid rows={rows} loading={isLoading} pageSize={10} />
     </section>
   );
 }

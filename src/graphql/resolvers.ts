@@ -1,6 +1,7 @@
 import {
   getActivities,
   getWeeklyTrainingLoad,
+  getWeeklyTrainingLoadByType,
   getSummary,
   getActivityTypeBreakdown,
   getActivityTypes,
@@ -20,6 +21,8 @@ export const resolvers = {
       getActivities({ limit: args.limit }),
     weeklyTrainingLoad: (_parent: unknown, args: { weeks?: number; type?: string }) =>
       getWeeklyTrainingLoad(args.weeks ?? 12, args.type),
+    weeklyTrainingLoadByType: (_parent: unknown, args: { weeks?: number }) =>
+      getWeeklyTrainingLoadByType(args.weeks ?? 12),
     summary: () => getSummary(),
     stravaConnected: async () => {
       const conn = await connectToDatabase();

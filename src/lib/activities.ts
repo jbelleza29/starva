@@ -89,6 +89,50 @@ export async function getWeeklyTrainingLoad(weeks = 12, type?: string): Promise<
     .slice(-weeks);
 }
 
+export interface TypeWeeklyLoad {
+  type: string;
+  series: WeeklyLoad[];
+}
+
+/**
+ * Weekly training load split per activity type, zero-filled over a shared
+ * week window so every type's series aligns on the same x-axis.
+ */
+export async function getWeeklyTrainingLoadByType(weeks = 12): Promise<TypeWeeklyLoad[]> {
+  const activities = await getActivities();
+  const byType = new Map<string, Map<string, WeeklyLoad>>();
+  const weekKeys = new Set<string>();
+
+  for (const a of activities) {
+    const key = startOfWeek(new Date(a.startDate)).toISOString().slice(0, 10);
+    weekKeys.add(key);
+    const typeMap = byType.get(a.type) ?? new Map<string, WeeklyLoad>();
+    const entry =
+      typeMap.get(key) ?? { weekStart: key, distance: 0, movingTime: 0, activityCount: 0 };
+    entry.distance += a.distance;
+    entry.movingTime += a.movingTime;
+    entry.activityCount += 1;
+    typeMap.set(key, entry);
+    byType.set(a.type, typeMap);
+  }
+
+  const window = Array.from(weekKeys).sort().slice(-weeks);
+
+  return Array.from(byType.entries())
+    .map(([type, typeMap]) => ({
+      type,
+      series: window.map(
+        (weekStart) =>
+          typeMap.get(weekStart) ?? { weekStart, distance: 0, movingTime: 0, activityCount: 0 },
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.series.reduce((sum, w) => sum + w.movingTime, 0) -
+        a.series.reduce((sum, w) => sum + w.movingTime, 0),
+    );
+}
+
 export interface DashboardSummary {
   totalDistance: number;
   totalMovingTime: number;

@@ -21,6 +21,11 @@ export const typeDefs = `#graphql
     activityCount: Int!
   }
 
+  type TypeWeeklyLoad {
+    type: String!
+    series: [WeeklyLoad!]!
+  }
+
   type DashboardSummary {
     totalDistance: Float!
     totalMovingTime: Int!
@@ -77,6 +82,7 @@ export const typeDefs = `#graphql
     activity(id: ID!): Activity
     activities(limit: Int): [Activity!]!
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
+    weeklyTrainingLoadByType(weeks: Int): [TypeWeeklyLoad!]!
     summary: DashboardSummary!
     stravaConnected: Boolean!
     activityTypes: [String!]!

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/",      label: "Dashboard" },
-  { href: "/goals", label: "Goals"     },
-  { href: "/about", label: "About"     },
+  { href: "/",           label: "Dashboard"  },
+  { href: "/activities", label: "Activities" },
+  { href: "/goals",      label: "Goals"      },
+  { href: "/about",      label: "About"      },
 ];
 
 /**
@@ -28,7 +29,7 @@ export function NavBar() {
 
         <div className="flex items-center gap-1">
           {LINKS.map(({ href, label }) => {
-            const active = pathname === href;
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
                 key={href}

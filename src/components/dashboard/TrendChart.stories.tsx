@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { TrendChart } from "./TrendChart";
+import { typeColor } from "@/lib/activityColors";
 
 // A realistic 12-week block: a build with a taper at the end.
 const weeklyKm = [
@@ -17,6 +18,9 @@ const weeklyKm = [
   { label: "Jun 1", value: 15 },
 ];
 
+const scale = (factor: number) =>
+  weeklyKm.map((week) => ({ ...week, value: Math.round(week.value * factor) }));
+
 const meta = {
   title: "Dashboard/TrendChart",
   component: TrendChart,
@@ -33,7 +37,7 @@ const meta = {
     ),
   ],
   args: {
-    data: weeklyKm,
+    series: [{ name: "Distance", data: weeklyKm }],
     unit: " km",
     // Disable animation so Chromatic captures a deterministic frame.
     animate: false,
@@ -47,13 +51,24 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const ShortRange: Story = {
-  args: { data: weeklyKm.slice(-4) },
+  args: { series: [{ name: "Distance", data: weeklyKm.slice(-4) }] },
 };
 
 export const Steady: Story = {
-  args: { data: weeklyKm.map((week) => ({ ...week, value: 30 })) },
+  args: { series: [{ name: "Distance", data: weeklyKm.map((week) => ({ ...week, value: 30 })) }] },
 };
 
 export const CustomColor: Story = {
-  args: { color: "#3b82f6" },
+  args: { series: [{ name: "Distance", color: "#3b82f6", data: weeklyKm }] },
+};
+
+// One line per activity type, as rendered when "All activities" is selected.
+export const MultiSeries: Story = {
+  args: {
+    series: [
+      { name: "Run", color: typeColor("Run", 0), data: weeklyKm },
+      { name: "Ride", color: typeColor("Ride", 1), data: scale(0.6) },
+      { name: "Walk", color: typeColor("Walk", 2), data: scale(0.25) },
+    ],
+  },
 };

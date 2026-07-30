@@ -12,11 +12,12 @@ you have a working dashboard with no database or API keys required.
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Apollo Server v5** mounted as a Next.js route handler (`/api/graphql`)
-- **Apollo Client v4** for client-side data fetching
+- **TanStack Query v5** for client-side data fetching, **Zustand 5** for client state
 - **GraphQL 16** — queries and mutations (goals CRUD)
 - **MongoDB** via **Mongoose 9** — activities, goals, Strava tokens
 - **Strava OAuth 2.0** — Authorization Code flow, server-side token storage
-- **Recharts 3** + **Leaflet / react-leaflet** for charts and route maps
+- **Highcharts 13** + **Leaflet / react-leaflet** for charts and route maps
+- **MUI X Data Grid** for the sortable/filterable activity table
 - **Storybook 10** + **Chromatic** — 27 component stories, visual regression in CI
 - **Vitest** for unit tests
 - **GitHub Actions** — lint → typecheck → build → Chromatic on every push
@@ -134,8 +135,8 @@ src/
 ```
 
 Two data-fetching patterns side by side:
-- **Client Components** (`page.tsx`, `goals/page.tsx`) use Apollo Client `useQuery` / `useMutation`
-- **Server Components** (`activities/[id]/page.tsx`) fetch directly from MongoDB — no Apollo needed
+- **Client Components** (`page.tsx`, `goals/page.tsx`) use TanStack Query hooks over a small `gqlFetch` helper
+- **Server Components** (`activities/[id]/page.tsx`) fetch directly from MongoDB — no client cache needed
 
 ## Storybook & visual testing
 
@@ -161,5 +162,6 @@ npm run chromatic  # publish to Chromatic (needs CHROMATIC_PROJECT_TOKEN)
 ## Architecture decisions
 
 See [`docs/adr.md`](docs/adr.md) for the reasoning behind key choices: GraphQL as a
-route handler, MongoDB over Postgres, the sample-data fallback, Recharts wrapped behind
-a custom API, Storybook/Chromatic on a solo project, and server-side token storage.
+route handler, MongoDB over Postgres, the sample-data fallback, the charting engine
+wrapped behind a custom API, Storybook/Chromatic on a solo project, and server-side
+token storage.

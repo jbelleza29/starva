@@ -51,3 +51,6 @@ PLAN.md
 
 *storybook.log
 storybook-static
+
+# omc state
+.omc/

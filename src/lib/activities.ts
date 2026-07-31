@@ -20,15 +20,18 @@ export interface ActivityRecord {
 interface ActivityQuery {
   limit?: number;
   type?: string;
+  since?: Date;
 }
 
 /** Returns activities from MongoDB if configured, else the sample dataset. */
 export async function getActivities(query?: ActivityQuery): Promise<ActivityRecord[]> {
-  const { limit, type } = query ?? {};
+  const { limit, type, since } = query ?? {};
   const conn = await connectToDatabase();
 
   if (conn) {
-    const filter = type ? { type } : {};
+    const filter: Record<string, unknown> = {};
+    if (type) filter.type = type;
+    if (since) filter.startDate = { $gte: since };
     const q = Activity.find(filter).sort({ startDate: -1 });
     if (limit) q.limit(limit);
     const docs = await q.lean();
@@ -51,7 +54,14 @@ export async function getActivities(query?: ActivityQuery): Promise<ActivityReco
 
   let sample = getSampleActivities();
   if (type) sample = sample.filter((a) => a.type === type);
+  if (since) sample = sample.filter((a) => new Date(a.startDate) >= since);
   return limit ? sample.slice(0, limit) : sample;
+}
+
+/** ISO date of the most recent activity, or null when there are none. */
+export async function getLastActivityDate(): Promise<string | null> {
+  const [latest] = await getActivities({ limit: 1 });
+  return latest?.startDate ?? null;
 }
 
 export interface WeeklyLoad {
@@ -69,24 +79,50 @@ function startOfWeek(date: Date): Date {
   return d;
 }
 
-/** Aggregates activities into weekly training load, optionally filtered by type. */
+/** Monday starting the N-week dashboard window that ends with the current week. */
+export function dashboardWindowStart(weeks = 12): Date {
+  const start = startOfWeek(new Date());
+  start.setUTCDate(start.getUTCDate() - (weeks - 1) * 7);
+  return start;
+}
+
+/** Monday keys (YYYY-MM-DD) for each week of the window, oldest first. */
+function windowWeekKeys(weeks: number): string[] {
+  const cursor = dashboardWindowStart(weeks);
+  const keys: string[] = [];
+  for (let i = 0; i < weeks; i += 1) {
+    keys.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 7);
+  }
+  return keys;
+}
+
+const EMPTY_WEEK = (weekStart: string): WeeklyLoad => ({
+  weekStart,
+  distance: 0,
+  movingTime: 0,
+  activityCount: 0,
+});
+
+/**
+ * Aggregates activities into weekly training load, optionally filtered by type.
+ * Clamped to the last N calendar weeks and zero-filled, so sparse types don't
+ * stretch years of data onto a "recent weeks" axis.
+ */
 export async function getWeeklyTrainingLoad(weeks = 12, type?: string): Promise<WeeklyLoad[]> {
-  const activities = await getActivities({ type });
+  const activities = await getActivities({ type, since: dashboardWindowStart(weeks) });
   const byWeek = new Map<string, WeeklyLoad>();
 
   for (const a of activities) {
     const key = startOfWeek(new Date(a.startDate)).toISOString().slice(0, 10);
-    const entry =
-      byWeek.get(key) ?? { weekStart: key, distance: 0, movingTime: 0, activityCount: 0 };
+    const entry = byWeek.get(key) ?? EMPTY_WEEK(key);
     entry.distance += a.distance;
     entry.movingTime += a.movingTime;
     entry.activityCount += 1;
     byWeek.set(key, entry);
   }
 
-  return Array.from(byWeek.values())
-    .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
-    .slice(-weeks);
+  return windowWeekKeys(weeks).map((key) => byWeek.get(key) ?? EMPTY_WEEK(key));
 }
 
 export interface TypeWeeklyLoad {
@@ -95,20 +131,17 @@ export interface TypeWeeklyLoad {
 }
 
 /**
- * Weekly training load split per activity type, zero-filled over a shared
- * week window so every type's series aligns on the same x-axis.
+ * Weekly training load split per activity type, zero-filled over the last N
+ * calendar weeks so every type's series aligns on the same x-axis.
  */
 export async function getWeeklyTrainingLoadByType(weeks = 12): Promise<TypeWeeklyLoad[]> {
-  const activities = await getActivities();
+  const activities = await getActivities({ since: dashboardWindowStart(weeks) });
   const byType = new Map<string, Map<string, WeeklyLoad>>();
-  const weekKeys = new Set<string>();
 
   for (const a of activities) {
     const key = startOfWeek(new Date(a.startDate)).toISOString().slice(0, 10);
-    weekKeys.add(key);
     const typeMap = byType.get(a.type) ?? new Map<string, WeeklyLoad>();
-    const entry =
-      typeMap.get(key) ?? { weekStart: key, distance: 0, movingTime: 0, activityCount: 0 };
+    const entry = typeMap.get(key) ?? EMPTY_WEEK(key);
     entry.distance += a.distance;
     entry.movingTime += a.movingTime;
     entry.activityCount += 1;
@@ -116,15 +149,12 @@ export async function getWeeklyTrainingLoadByType(weeks = 12): Promise<TypeWeekl
     byType.set(a.type, typeMap);
   }
 
-  const window = Array.from(weekKeys).sort().slice(-weeks);
+  const window = windowWeekKeys(weeks);
 
   return Array.from(byType.entries())
     .map(([type, typeMap]) => ({
       type,
-      series: window.map(
-        (weekStart) =>
-          typeMap.get(weekStart) ?? { weekStart, distance: 0, movingTime: 0, activityCount: 0 },
-      ),
+      series: window.map((weekStart) => typeMap.get(weekStart) ?? EMPTY_WEEK(weekStart)),
     }))
     .sort(
       (a, b) =>
@@ -140,8 +170,8 @@ export interface DashboardSummary {
   totalElevationGain: number;
 }
 
-export async function getSummary(): Promise<DashboardSummary> {
-  const activities = await getActivities();
+export async function getSummary(since?: Date): Promise<DashboardSummary> {
+  const activities = await getActivities({ since });
   return activities.reduce<DashboardSummary>(
     (acc, a) => ({
       totalDistance: acc.totalDistance + a.distance,
@@ -163,9 +193,13 @@ export interface DashboardHighlights {
   avgWeekDistance: number;
 }
 
-/** Computes highlight stats: best week, longest activity, and this week vs average. */
-export async function getHighlights(): Promise<DashboardHighlights> {
-  const activities = await getActivities();
+/**
+ * Computes highlight stats over the last N calendar weeks: best week, longest
+ * activity, and this week vs the window average (zero weeks included, so a
+ * quiet stretch lowers the average instead of being ignored).
+ */
+export async function getHighlights(weeks = 12): Promise<DashboardHighlights> {
+  const activities = await getActivities({ since: dashboardWindowStart(weeks) });
 
   if (activities.length === 0) {
     return {
@@ -192,12 +226,13 @@ export async function getHighlights(): Promise<DashboardHighlights> {
   const currentWeekKey = startOfWeek(new Date()).toISOString().slice(0, 10);
   const currentWeekDist = byWeek.get(currentWeekKey) ?? 0;
 
-  const completedWeekDistances = Array.from(byWeek.entries())
+  // Average over every completed calendar week in the window, not just weeks
+  // with activity — otherwise skipped weeks inflate the baseline.
+  const completedWeeks = weeks - 1;
+  const completedTotal = Array.from(byWeek.entries())
     .filter(([key]) => key !== currentWeekKey)
-    .map(([, dist]) => dist);
-  const avgWeekDist = completedWeekDistances.length > 0
-    ? completedWeekDistances.reduce((s, d) => s + d, 0) / completedWeekDistances.length
-    : 0;
+    .reduce((sum, [, dist]) => sum + dist, 0);
+  const avgWeekDist = completedWeeks > 0 ? completedTotal / completedWeeks : 0;
 
   return {
     bestWeekDistance: bestWeekDist,
@@ -218,8 +253,8 @@ export interface ActivityTypeBreakdown {
 }
 
 /** Returns distance, moving time, and count per activity type, sorted by moving time descending. */
-export async function getActivityTypeBreakdown(): Promise<ActivityTypeBreakdown[]> {
-  const activities = await getActivities();
+export async function getActivityTypeBreakdown(since?: Date): Promise<ActivityTypeBreakdown[]> {
+  const activities = await getActivities({ since });
   const byType = new Map<string, ActivityTypeBreakdown>();
 
   for (const a of activities) {
@@ -234,8 +269,8 @@ export async function getActivityTypeBreakdown(): Promise<ActivityTypeBreakdown[
 }
 
 /** Returns the distinct activity types present in the dataset. */
-export async function getActivityTypes(): Promise<string[]> {
-  const breakdown = await getActivityTypeBreakdown();
+export async function getActivityTypes(since?: Date): Promise<string[]> {
+  const breakdown = await getActivityTypeBreakdown(since);
   return breakdown.map((b) => b.type);
 }
 
@@ -248,8 +283,8 @@ export interface ActivityPeak {
 }
 
 /** Returns the longest activity (by distance, falling back to time) for each type. */
-export async function getLongestPerType(): Promise<ActivityPeak[]> {
-  const activities = await getActivities();
+export async function getLongestPerType(since?: Date): Promise<ActivityPeak[]> {
+  const activities = await getActivities({ since });
   const byType = new Map<string, ActivityRecord>();
 
   for (const a of activities) {

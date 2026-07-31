@@ -7,6 +7,7 @@ import type { HeatmapDay } from "@/components/dashboard/HeatmapChart";
 
 export interface DashboardData {
   stravaConnected: boolean;
+  lastActivityAt: string | null;
   activityTypes: string[];
   activityTypeBreakdown: DonutChartDataItem[];
   summary: {
@@ -69,6 +70,7 @@ export interface GoalRecord {
 const DASHBOARD_QUERY = `
   query Dashboard {
     stravaConnected
+    lastActivityAt
     activityTypes
     activityTypeBreakdown { type count distance movingTime }
     summary { totalDistance totalMovingTime activityCount totalElevationGain }

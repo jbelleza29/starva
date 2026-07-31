@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getActivityIcon } from "@/lib/activityIcons";
-import { formatDistance, formatDuration } from "@/lib/format";
+import { formatDistance, formatDuration, currentMonthKey } from "@/lib/format";
 import { useGoalsQuery, useCreateGoal, useDeleteGoal } from "@/lib/queries";
 import type { GoalRecord } from "@/lib/queries";
 
@@ -10,11 +10,6 @@ const METRICS = [
   { key: "distance", label: "Distance", unit: "km"  },
   { key: "time",     label: "Time",     unit: "hrs" },
 ] as const;
-
-function currentMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 function formatMonth(yyyyMM: string): string {
   const [y, m] = yyyyMM.split("-");
@@ -35,7 +30,7 @@ export default function GoalsPage() {
   const [activityType, setActivityType] = useState("Run");
   const [metric, setMetric] = useState<"distance" | "time">("distance");
   const [targetInput, setTargetInput] = useState("");
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useState(currentMonthKey);
 
   const availableTypes = ["All", ...(data?.activityTypes ?? [])];
 
@@ -49,7 +44,7 @@ export default function GoalsPage() {
   }
 
   const goals = data?.goals ?? [];
-  const thisMonth = currentMonth();
+  const thisMonth = currentMonthKey();
   const activeGoals = goals.filter((g) => g.month === thisMonth);
   const pastGoals   = goals.filter((g) => g.month !== thisMonth);
 

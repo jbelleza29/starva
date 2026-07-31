@@ -15,6 +15,7 @@ import {
   formatDuration,
   formatElevation,
   formatWeekLabel,
+  currentMonthKey,
 } from "@/lib/format";
 import { useDashboardQuery, useTrendQuery, useTrendByTypeQuery, useActivitiesQuery } from "@/lib/queries";
 import { typeColor } from "@/lib/activityColors";
@@ -101,6 +102,16 @@ function PageContent() {
               ? "Training load over the last 12 weeks, from your Strava activities."
               : "John's training load over the last 12 weeks."}
           </p>
+          {data?.lastActivityAt ? (
+            <p className="mt-0.5 text-xs text-neutral-400">
+              Data through{" "}
+              {new Date(data.lastActivityAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -147,9 +158,26 @@ function PageContent() {
   );
 }
 
+function weekDeltaSublabel(
+  current: number,
+  avg: number,
+): { text: string; tone?: "positive" | "negative" } | undefined {
+  if (current === 0) return { text: "No activity logged yet this week" };
+  if (avg <= 0) return undefined;
+  const pct = Math.round(((current - avg) / avg) * 100);
+  return {
+    text: `${pct >= 0 ? "+" : ""}${pct}% vs avg week`,
+    tone: pct >= 0 ? "positive" : "negative",
+  };
+}
+
 function Dashboard({ data }: { data: DashboardData }) {
   const { summary, activityTypeBreakdown, activityTypes, dailyHeatmap, highlights, longestPerType, goals } = data;
   const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  const weekDelta = weekDeltaSublabel(highlights.currentWeekDistance, highlights.avgWeekDistance);
+  const activeGoals = goals.filter((goal) => goal.month === currentMonthKey());
+  const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
 
   if (summary.activityCount === 0) {
     return (
@@ -177,15 +205,8 @@ function Dashboard({ data }: { data: DashboardData }) {
         <KpiCard
           label="This week"
           value={formatDistance(highlights.currentWeekDistance)}
-          sublabel={
-            highlights.avgWeekDistance > 0
-              ? (() => {
-                  const diff = highlights.currentWeekDistance - highlights.avgWeekDistance;
-                  const pct = Math.round((diff / highlights.avgWeekDistance) * 100);
-                  return `${pct >= 0 ? "+" : ""}${pct}% vs avg week`;
-                })()
-              : undefined
-          }
+          sublabel={weekDelta?.text}
+          sublabelTone={weekDelta?.tone}
         />
       </section>
 
@@ -227,16 +248,24 @@ function Dashboard({ data }: { data: DashboardData }) {
         <HeatmapChart data={dailyHeatmap} />
       </section>
 
-      {goals.length > 0 && (
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-500">Goals in progress</h2>
-            <a href="/goals" className="text-xs text-orange-500 hover:underline">
-              Manage goals →
-            </a>
-          </div>
+      <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-neutral-500">Goals · {monthName}</h2>
+          <Link href="/goals" className="text-xs text-orange-500 hover:underline">
+            Manage goals →
+          </Link>
+        </div>
+        {activeGoals.length === 0 ? (
+          <p className="text-sm text-neutral-400">
+            No goals set for {monthName} yet —{" "}
+            <Link href="/goals" className="text-orange-500 hover:underline">
+              set one
+            </Link>
+            .
+          </p>
+        ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {goals.map((goal) => {
+            {activeGoals.map((goal) => {
               const pct = Math.min(Math.round((goal.progress / goal.target) * 100), 100);
               const done = pct >= 100;
               const valueLabel =
@@ -267,16 +296,22 @@ function Dashboard({ data }: { data: DashboardData }) {
               );
             })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }
 
-const TREND_WINDOW_DAYS = 12 * 7;
-// Snapshot at module load — render-time Date.now() trips react-hooks/purity,
-// and a session-fixed window is fine for this dashboard.
-const TREND_CUTOFF_MS = Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+const TREND_WINDOW_WEEKS = 12;
+// Monday (UTC) starting the 12-week window — same math as dashboardWindowStart
+// server-side, so the grid count matches the KPIs. Snapshotted at module load;
+// render-time Date.now() trips react-hooks/purity.
+const TREND_CUTOFF_MS = (() => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) - (TREND_WINDOW_WEEKS - 1) * 7);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime();
+})();
 
 function TrendSection({
   types,
@@ -299,9 +334,8 @@ function TrendSection({
   const series = value
     ? [{ name: value, data: toPoints(singleData?.weeklyTrainingLoad ?? []) }]
     : (byTypeData?.weeklyTrainingLoadByType ?? [])
-        // Drop types with zero hours across the whole window.
-        .filter((t) => t.series.some((week) => week.movingTime > 0))
-        .filter((t) => t.type !== "Kayaking")
+        // Hide types with under an hour in the window — single-session noise.
+        .filter((t) => t.series.reduce((sum, week) => sum + week.movingTime, 0) >= 3600)
         .map((t, index) => ({
           name: t.type,
           color: typeColor(t.type, index),

@@ -84,6 +84,7 @@ export const typeDefs = `#graphql
     weeklyTrainingLoad(weeks: Int, type: String): [WeeklyLoad!]!
     weeklyTrainingLoadByType(weeks: Int): [TypeWeeklyLoad!]!
     summary: DashboardSummary!
+    lastActivityAt: String
     stravaConnected: Boolean!
     activityTypes: [String!]!
     activityTypeBreakdown: [ActivityTypeBreakdown!]!

@@ -25,6 +25,12 @@ export function formatPace(distanceM: number, movingTimeS: number): string {
   return `${min}:${String(sec).padStart(2, "0")} /km`;
 }
 
+/** Current month as "YYYY-MM" (local time). */
+export function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 /** ISO date (YYYY-MM-DD) -> short label like "Apr 7". */
 export function formatWeekLabel(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00Z`);

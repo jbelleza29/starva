@@ -23,6 +23,15 @@ async function seed() {
   await mongoose.connect(uri);
   console.log("Connected to MongoDB");
 
+  // Real Strava activities carry 10-digit ids; sample rows start at 1000.
+  // Refuse to wipe real data unless explicitly forced.
+  const hasRealData = await Activity.exists({ stravaId: { $gte: 100_000 } });
+  if (hasRealData && !process.argv.includes("--force")) {
+    throw new Error(
+      "Collection contains real Strava activities — seeding would delete them. Re-run with --force to overwrite.",
+    );
+  }
+
   const docs = getSampleActivities().map((a) => ({
     stravaId: a.stravaId,
     name: a.name,

@@ -15,7 +15,8 @@ export interface ActivityFilterProps {
 
 /**
  * Reusable activity-type filter dropdown. Shows an icon + name per option.
- * Accessible: keyboard-navigable, aria-expanded/aria-selected wired up.
+ * aria-expanded/aria-selected are wired up; keyboard navigation is not
+ * implemented yet — mouse/touch only.
  */
 export function ActivityFilter({ types, value, onChange }: ActivityFilterProps) {
   const [open, setOpen] = useState(false);
